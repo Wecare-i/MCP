@@ -1,0 +1,8 @@
+{
+    "projectId": "[STITCH_PROJECT_ID]",
+    "projectName": "[APP_NAME]",
+    "createdAt": "[TIMESTAMP]",
+    "totalScreens": 0,
+    "completedScreens": 0,
+    "screens": []
+}
