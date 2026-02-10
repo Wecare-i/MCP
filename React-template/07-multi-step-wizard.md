@@ -79,9 +79,18 @@
 
 ```
 Multi-step wizard form for [YOUR PROCESS].
+Ví dụ: Wizard tạo đơn đặt hàng vật tư / Onboarding khách hàng B2B / Đăng ký nhà cung cấp.
 
-Brand: Wecare Blue (#3492ab), Green (#4CAF50), Off White bg (#F8F9FA).
-Fonts: Lexend headings, Roboto body.
+DESIGN SYSTEM (BẮT BUỘC):
+├─ Brand: Wecare — Nhà phân phối công nghiệp B2B tại Việt Nam
+├─ Primary Color: TEAL BLUE #3492ab (KHÔNG dùng purple/indigo)
+├─ Accent Color: Green #4CAF50 (success, positive actions)
+├─ Background: Off White #F8F9FA | Text: Charcoal #343A40
+├─ Fonts: Lexend (headings), Roboto (body)
+├─ Logo: https://i.imgur.com/tD07Yrv.png
+├─ Sản phẩm: Kim khí (bu lông, ốc vít), Bao bì (băng keo, dây đai), Hóa chất (keo, sơn), Điện nước
+├─ Khách hàng: Cửa hàng vật tư (90%), Nhà máy (10%), Miền Trung VN
+└─ Ngôn ngữ UI: Tiếng Việt
 
 Layout: Centered form (max-w-2xl mx-auto) with progress stepper on top.
 

@@ -91,3 +91,39 @@
 - Cửa hàng: 90% số khách, 70% doanh số
 - Nhà máy: 10% số khách, 30% doanh số
 - Khu vực: Miền Trung Việt Nam (trung tâm Bình Định)
+
+---
+
+## Stitch Prompt Block
+
+> **Hướng dẫn:** Copy block bên dưới vào **mọi Stitch prompt** để đảm bảo đúng brand.
+
+```
+DESIGN SYSTEM (BẮT BUỘC — copy vào mọi prompt):
+├─ Brand: Wecare — Nhà phân phối công nghiệp B2B tại Việt Nam
+├─ Primary Color: TEAL BLUE #3492ab (KHÔNG dùng purple/indigo)
+├─ Accent Color: Green #4CAF50 (success, positive actions)
+├─ Background: Off White #F8F9FA
+├─ Text: Charcoal #343A40
+├─ Borders: Light Grey #E9ECEF
+├─ Secondary text: Medium Grey #6C757D
+├─ Hover: Light Teal #7FBACB
+├─ Dark sections: Deep Teal #164553
+├─ Fonts: Lexend (headings, bold), Roboto (body, clean)
+├─ Logo: https://i.imgur.com/tD07Yrv.png
+├─ Sản phẩm: Kim khí (bu lông, ốc vít, pát), Bao bì (băng keo, dây đai, dây rút), Hóa chất (keo Apollo, sơn xịt), Điện nước
+├─ Khách hàng: Cửa hàng vật tư (90%), Nhà máy sản xuất (10%), Miền Trung VN
+├─ Buttons: Primary = #3492ab bg + white text, Secondary = transparent + #3492ab border
+└─ Ngôn ngữ UI: Tiếng Việt
+```
+
+---
+
+## Lưu ý cho Stitch
+
+> [!WARNING]
+> Stitch có xu hướng đổi `#3492ab` (teal) thành **purple/indigo**. Để tránh:
+
+1. **Luôn ghi rõ:** "Primary color is TEAL BLUE #3492ab (NOT purple, NOT indigo)"
+2. **Nhấn mạnh:** "This is a cyan-teal color, NOT violet"
+3. **Kiểm tra** kết quả: nếu Stitch theme hiện `customColor` khác `#3592ac` hoặc `#3492ab` → regenerate

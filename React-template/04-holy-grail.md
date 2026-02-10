@@ -69,10 +69,18 @@
 
 ```
 Three-column "Holy Grail" layout for [YOUR PURPOSE].
+Ví dụ: Portal quản lý kho vật tư / Trang tin tức nội bộ / Knowledge base sản phẩm.
 
-Brand: Wecare Blue (#3492ab), Green (#4CAF50), Off White background (#F8F9FA).
-Fonts: Lexend headings, Roboto body.
-Logo: https://i.imgur.com/tD07Yrv.png
+DESIGN SYSTEM (BẮT BUỘC):
+├─ Brand: Wecare — Nhà phân phối công nghiệp B2B tại Việt Nam
+├─ Primary Color: TEAL BLUE #3492ab (KHÔNG dùng purple/indigo)
+├─ Accent Color: Green #4CAF50 (success, positive actions)
+├─ Background: Off White #F8F9FA | Text: Charcoal #343A40
+├─ Fonts: Lexend (headings), Roboto (body)
+├─ Logo: https://i.imgur.com/tD07Yrv.png
+├─ Sản phẩm: Kim khí (bu lông, ốc vít), Bao bì (băng keo, dây đai), Hóa chất (keo, sơn), Điện nước
+├─ Khách hàng: Cửa hàng vật tư (90%), Nhà máy (10%), Miền Trung VN
+└─ Ngôn ngữ UI: Tiếng Việt
 
 Layout: 12-column grid — left sidebar (3), main content (6), right sidebar (3).
 
