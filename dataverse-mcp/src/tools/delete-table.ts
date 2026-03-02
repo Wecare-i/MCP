@@ -7,6 +7,20 @@
 import type { DataverseClient } from "../client/dataverse-client.js";
 import type { ODataResponse, ToolResult } from "../types/dataverse.js";
 
+const COMPONENT_TYPE_LABELS: Record<number, string> = {
+    26: "Saved Query (View)",
+    29: "Workflow / Power Automate Flow",
+    59: "Saved Query Visualization (Chart)",
+    60: "System Form",
+    91: "Plugin Assembly",
+    92: "SDK Message Processing Step",
+};
+
+interface SolutionDependency {
+    dependentcomponenttype: number;
+    dependentcomponentobjectid: string;
+}
+
 interface RelationshipInfo {
     SchemaName: string;
     ReferencingEntity?: string;
@@ -98,11 +112,11 @@ export async function handler(
         `${basePath}/ManyToManyRelationships?$select=SchemaName,Entity1LogicalName,Entity2LogicalName`
     );
 
-    // 5. Tổng hợp dependencies
-    const dependencies: string[] = [];
+    // 5. Tổng hợp relationship dependencies
+    const relationshipDeps: string[] = [];
 
     for (const r of customOneToMany) {
-        dependencies.push(
+        relationshipDeps.push(
             `[1:N] ${r.SchemaName}: ${r.ReferencingEntity} → ${args.entityName}`
         );
     }
@@ -112,13 +126,45 @@ export async function handler(
             r.Entity1LogicalName === args.entityName
                 ? r.Entity2LogicalName
                 : r.Entity1LogicalName;
-        dependencies.push(
+        relationshipDeps.push(
             `[N:N] ${r.SchemaName}: ${args.entityName} ↔ ${otherEntity}`
         );
     }
 
-    // 6. Nếu có dependencies → TỪ CHỐI XÓA
-    if (dependencies.length > 0) {
+    // 6. Kiểm tra solution-level dependencies (Views, Workflows, Forms...)
+    //    Dataverse "dependency" entity lưu danh sách component nào đang tham chiếu entity này
+    const solutionDepFetch = `<fetch>
+  <entity name="dependency">
+    <attribute name="dependentcomponenttype"/>
+    <attribute name="dependentcomponentobjectid"/>
+    <filter>
+      <condition attribute="requiredcomponentobjectid" operator="eq" value="${entity.MetadataId}"/>
+    </filter>
+  </entity>
+</fetch>`;
+
+    let solutionDeps: SolutionDependency[] = [];
+    try {
+        const depResult = await client.fetchXml<ODataResponse<SolutionDependency>>(
+            "dependencies",
+            solutionDepFetch
+        );
+        solutionDeps = depResult.value ?? [];
+    } catch {
+        // Nếu không query được dependency entity → bỏ qua, không block xóa
+        solutionDeps = [];
+    }
+
+    // Phân loại solution deps thành nhóm có thể đọc được
+    const solutionDepSummary = solutionDeps.map((d) => ({
+        type: COMPONENT_TYPE_LABELS[d.dependentcomponenttype] ?? `Component type ${d.dependentcomponenttype}`,
+        typeCode: d.dependentcomponenttype,
+        componentId: d.dependentcomponentobjectid,
+    }));
+
+    // 7. Nếu có bất kỳ dependency nào (relationship hoặc solution) → TỪ CHỐI XÓA
+    const totalDependencies = [...relationshipDeps, ...solutionDepSummary];
+    if (totalDependencies.length > 0) {
         return {
             content: [
                 {
@@ -130,11 +176,19 @@ export async function handler(
                             displayName:
                                 entity.DisplayName?.UserLocalizedLabel?.Label ??
                                 args.entityName,
-                            reason: "Không thể xóa — table có dependencies với tables khác.",
-                            dependencyCount: dependencies.length,
-                            dependencies,
-                            suggestion:
-                                "Hãy xóa các relationships trước rồi thử lại, hoặc xóa thủ công trong Power Apps.",
+                            reason: "Không thể xóa — table vẫn còn dependencies chưa được xử lý.",
+                            relationshipDependencies: {
+                                count: relationshipDeps.length,
+                                items: relationshipDeps,
+                            },
+                            solutionDependencies: {
+                                count: solutionDepSummary.length,
+                                items: solutionDepSummary,
+                            },
+                            suggestion: [
+                                "Dùng check_dependencies để xem chi tiết và hướng dẫn xử lý từng dependency.",
+                                "Sau khi xử lý xong tất cả → chạy publish_customizations → thử delete_table lại.",
+                            ],
                         },
                         null,
                         2
@@ -145,7 +199,7 @@ export async function handler(
         };
     }
 
-    // 7. Không dependency → XÓA TABLE
+    // 8. Không còn dependency → XÓA TABLE
     await client.delete(`/EntityDefinitions(${entity.MetadataId})`);
 
     return {

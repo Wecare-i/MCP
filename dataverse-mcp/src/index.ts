@@ -35,8 +35,11 @@ import * as getRelationships from "./tools/get-relationships.js";
 import * as getOptionset from "./tools/get-optionset.js";
 import * as deleteTable from "./tools/delete-table.js";
 import * as deleteAttribute from "./tools/delete-attribute.js";
+import * as deleteRecord from "./tools/delete-record.js";
 import * as publishCustomizations from "./tools/publish-customizations.js";
 import * as checkDependencies from "./tools/check-dependencies.js";
+import * as analyzeTableQuality from "./tools/analyze-null-columns.js";
+import * as executeAction from "./tools/execute-action.js";
 
 // ─── Load Configuration ────────────────────────────────────────────────────
 
@@ -79,8 +82,11 @@ const tools: ToolModule[] = [
     getOptionset,
     deleteTable,
     deleteAttribute,
+    deleteRecord,
     publishCustomizations,
     checkDependencies,
+    analyzeTableQuality,
+    executeAction,
 ];
 
 // ─── MCP Server ────────────────────────────────────────────────────────────
