@@ -61,8 +61,8 @@ export async function handler(
 
     if (args.select) params.push(`$select=${args.select}`);
     if (args.filter) params.push(`$filter=${encodeURIComponent(args.filter)}`);
-    if (args.orderby) params.push(`$orderby=${args.orderby}`);
-    if (args.expand) params.push(`$expand=${args.expand}`);
+    if (args.orderby) params.push(`$orderby=${encodeURIComponent(args.orderby)}`);
+    if (args.expand) params.push(`$expand=${encodeURIComponent(args.expand)}`);
 
     const top = Math.min(args.top || 50, 5000);
     params.push(`$top=${top}`);

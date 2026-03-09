@@ -55,43 +55,55 @@ export async function handler(
 
     // OneToMany
     if (type === "all" || type === "oneToMany") {
-        const oneToMany = await client.get<ODataResponse<RelationshipMetadata>>(
-            `${basePath}/OneToManyRelationships?$select=SchemaName,ReferencingEntity,ReferencingAttribute,ReferencedEntity,ReferencedAttribute`
-        );
-        result.oneToMany = oneToMany.value.map((r) => ({
-            SchemaName: r.SchemaName,
-            ReferencingEntity: r.ReferencingEntity,
-            ReferencingAttribute: r.ReferencingAttribute,
-            ReferencedEntity: r.ReferencedEntity,
-            ReferencedAttribute: r.ReferencedAttribute,
-        }));
+        try {
+            const oneToMany = await client.get<ODataResponse<RelationshipMetadata>>(
+                `${basePath}/OneToManyRelationships?$select=SchemaName,ReferencingEntity,ReferencingAttribute,ReferencedEntity,ReferencedAttribute`
+            );
+            result.oneToMany = oneToMany.value.map((r) => ({
+                SchemaName: r.SchemaName,
+                ReferencingEntity: r.ReferencingEntity,
+                ReferencingAttribute: r.ReferencingAttribute,
+                ReferencedEntity: r.ReferencedEntity,
+                ReferencedAttribute: r.ReferencedAttribute,
+            }));
+        } catch {
+            result.oneToMany = [];
+        }
     }
 
     // ManyToOne
     if (type === "all" || type === "manyToOne") {
-        const manyToOne = await client.get<ODataResponse<RelationshipMetadata>>(
-            `${basePath}/ManyToOneRelationships?$select=SchemaName,ReferencingEntity,ReferencingAttribute,ReferencedEntity,ReferencedAttribute`
-        );
-        result.manyToOne = manyToOne.value.map((r) => ({
-            SchemaName: r.SchemaName,
-            ReferencingEntity: r.ReferencingEntity,
-            ReferencingAttribute: r.ReferencingAttribute,
-            ReferencedEntity: r.ReferencedEntity,
-            ReferencedAttribute: r.ReferencedAttribute,
-        }));
+        try {
+            const manyToOne = await client.get<ODataResponse<RelationshipMetadata>>(
+                `${basePath}/ManyToOneRelationships?$select=SchemaName,ReferencingEntity,ReferencingAttribute,ReferencedEntity,ReferencedAttribute`
+            );
+            result.manyToOne = manyToOne.value.map((r) => ({
+                SchemaName: r.SchemaName,
+                ReferencingEntity: r.ReferencingEntity,
+                ReferencingAttribute: r.ReferencingAttribute,
+                ReferencedEntity: r.ReferencedEntity,
+                ReferencedAttribute: r.ReferencedAttribute,
+            }));
+        } catch {
+            result.manyToOne = [];
+        }
     }
 
     // ManyToMany
     if (type === "all" || type === "manyToMany") {
-        const manyToMany = await client.get<ODataResponse<RelationshipMetadata>>(
-            `${basePath}/ManyToManyRelationships?$select=SchemaName,Entity1LogicalName,Entity2LogicalName,IntersectEntityName`
-        );
-        result.manyToMany = manyToMany.value.map((r) => ({
-            SchemaName: r.SchemaName,
-            Entity1LogicalName: r.Entity1LogicalName,
-            Entity2LogicalName: r.Entity2LogicalName,
-            IntersectEntityName: r.IntersectEntityName,
-        }));
+        try {
+            const manyToMany = await client.get<ODataResponse<RelationshipMetadata>>(
+                `${basePath}/ManyToManyRelationships?$select=SchemaName,Entity1LogicalName,Entity2LogicalName,IntersectEntityName`
+            );
+            result.manyToMany = manyToMany.value.map((r) => ({
+                SchemaName: r.SchemaName,
+                Entity1LogicalName: r.Entity1LogicalName,
+                Entity2LogicalName: r.Entity2LogicalName,
+                IntersectEntityName: r.IntersectEntityName,
+            }));
+        } catch {
+            result.manyToMany = [];
+        }
     }
 
     // Đếm tổng

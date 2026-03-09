@@ -5,9 +5,12 @@
  * @description Dataverse MCP Server - Entry point
  *
  * Custom MCP Server kết nối Microsoft Dataverse cho Antigravity IDE.
- * Cung cấp 10 tools: list_entities, get_entity_metadata, get_entity_attributes,
+ * Cung cấp 17 tools: list_entities, get_entity_metadata, get_entity_attributes,
  * query_records, create_record, update_record, execute_fetchxml,
- * get_record_by_id, get_relationships, get_optionset.
+ * get_record_by_id, get_relationships, get_optionset,
+ * delete_table, delete_attribute, delete_record,
+ * publish_customizations, check_dependencies,
+ * analyze_table_quality, execute_action.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -98,7 +101,7 @@ const client = new DataverseClient(config.url, auth);
 const server = new Server(
     {
         name: "Dataverse-Wizard",
-        version: "1.0.0",
+        version: "1.1.0",
     },
     {
         capabilities: {

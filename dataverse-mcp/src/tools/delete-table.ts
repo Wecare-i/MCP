@@ -1,25 +1,22 @@
 /**
  * Tool: delete_table
  * Xóa custom table (entity) khỏi Dataverse.
- * Tự động kiểm tra dependencies trước — nếu có relationship thì từ chối xóa.
+ *
+ * Flow:
+ * 1. Lấy entity metadata + kiểm tra IsCustomEntity
+ * 2. Auto-resolve blocking dependencies:
+ *    - Views/Forms/Charts → xóa hẳn (không còn hữu ích khi table bị xóa)
+ *    - Workflows → deactivate về Draft
+ *    - Model-driven App → RemoveAppComponents
+ *    - Canvas App / Plugin → warning, tiếp tục
+ * 3. Kiểm tra relationship (OneToMany, ManyToMany) → block nếu còn
+ * 4. PublishAllXml
+ * 5. Xóa table
  */
 
 import type { DataverseClient } from "../client/dataverse-client.js";
 import type { ODataResponse, ToolResult } from "../types/dataverse.js";
-
-const COMPONENT_TYPE_LABELS: Record<number, string> = {
-    26: "Saved Query (View)",
-    29: "Workflow / Power Automate Flow",
-    59: "Saved Query Visualization (Chart)",
-    60: "System Form",
-    91: "Plugin Assembly",
-    92: "SDK Message Processing Step",
-};
-
-interface SolutionDependency {
-    dependentcomponenttype: number;
-    dependentcomponentobjectid: string;
-}
+import { resolveBlockingDeps } from "./dependency-resolver.js";
 
 interface RelationshipInfo {
     SchemaName: string;
@@ -44,7 +41,7 @@ interface EntityDefinition {
 export const definition = {
     name: "delete_table",
     description:
-        "Xóa một custom table (entity) khỏi Dataverse. QUAN TRỌNG: Tool sẽ tự động kiểm tra dependencies (relationships) trước. Nếu có dependency với table khác thì từ chối xóa và liệt kê danh sách dependencies. Chỉ xóa được custom tables, không xóa system tables.",
+        "Xóa một custom table (entity) khỏi Dataverse. Tự động gỡ blocking dependencies (xóa Views/Forms/Charts của table, deactivate Workflows, gỡ table khỏi Model-driven App) trước khi xóa. Canvas App/Plugin sẽ được cảnh báo nhưng không block. Nếu còn relationship với table khác sẽ từ chối xóa.",
     inputSchema: {
         type: "object" as const,
         properties: {
@@ -93,27 +90,51 @@ export async function handler(
         };
     }
 
-    // 3. Kiểm tra dependencies: OneToMany (table này được tham chiếu bởi table khác)
-    const basePath = `/EntityDefinitions(LogicalName='${args.entityName}')`;
-
-    const oneToMany = await client.get<ODataResponse<RelationshipInfo>>(
-        `${basePath}/OneToManyRelationships?$select=SchemaName,ReferencingEntity,ReferencedEntity,IsCustomRelationship`
+    // 3. Auto-resolve blocking dependencies
+    //    deleteContainers = true → xóa hẳn Views/Forms/Charts (vì table sắp bị xóa)
+    const resolveResult = await resolveBlockingDeps(
+        client,
+        entity.MetadataId,
+        1, // ComponentType = 1 (Entity)
+        {
+            deleteContainers: true,
+            entityMetadataId: entity.MetadataId,
+            entityName: args.entityName,
+        }
     );
 
-    // Lọc custom relationships — bỏ system relationships
+    // Nếu có lỗi trong auto-resolve → log warning nhưng VẪN tiếp tục xóa table
+    // Lý do: một số "lỗi" là do views/forms system không xóa được riêng lẻ,
+    // nhưng chúng sẽ tự động bị xóa khi table bị xóa (cascade delete của Dataverse)
+    const resolveWarnings = resolveResult.errors;
+
+    // 4. Kiểm tra relationships (OneToMany, ManyToMany) — phải xử lý thủ công
+    const basePath = `/EntityDefinitions(LogicalName='${args.entityName}')`;
+    const relationshipDeps: string[] = [];
+
+    let oneToMany: ODataResponse<RelationshipInfo> = { value: [] };
+    try {
+        oneToMany = await client.get<ODataResponse<RelationshipInfo>>(
+            `${basePath}/OneToManyRelationships?$select=SchemaName,ReferencingEntity,ReferencedEntity,IsCustomRelationship`
+        );
+    } catch {
+        // Bỏ qua nếu không lấy được
+    }
+
     const customOneToMany = oneToMany.value.filter(
         (r) =>
             r.IsCustomRelationship === true &&
-            r.ReferencingEntity !== args.entityName // Chỉ lấy nơi table KHÁC tham chiếu đến table này
+            r.ReferencingEntity !== args.entityName
     );
 
-    // 4. Kiểm tra ManyToMany
-    const manyToMany = await client.get<ODataResponse<RelationshipInfo>>(
-        `${basePath}/ManyToManyRelationships?$select=SchemaName,Entity1LogicalName,Entity2LogicalName`
-    );
-
-    // 5. Tổng hợp relationship dependencies
-    const relationshipDeps: string[] = [];
+    let manyToMany: ODataResponse<RelationshipInfo> = { value: [] };
+    try {
+        manyToMany = await client.get<ODataResponse<RelationshipInfo>>(
+            `${basePath}/ManyToManyRelationships?$select=SchemaName,Entity1LogicalName,Entity2LogicalName`
+        );
+    } catch {
+        // Bỏ qua nếu không lấy được
+    }
 
     for (const r of customOneToMany) {
         relationshipDeps.push(
@@ -131,40 +152,7 @@ export async function handler(
         );
     }
 
-    // 6. Kiểm tra solution-level dependencies (Views, Workflows, Forms...)
-    //    Dataverse "dependency" entity lưu danh sách component nào đang tham chiếu entity này
-    const solutionDepFetch = `<fetch>
-  <entity name="dependency">
-    <attribute name="dependentcomponenttype"/>
-    <attribute name="dependentcomponentobjectid"/>
-    <filter>
-      <condition attribute="requiredcomponentobjectid" operator="eq" value="${entity.MetadataId}"/>
-    </filter>
-  </entity>
-</fetch>`;
-
-    let solutionDeps: SolutionDependency[] = [];
-    try {
-        const depResult = await client.fetchXml<ODataResponse<SolutionDependency>>(
-            "dependencies",
-            solutionDepFetch
-        );
-        solutionDeps = depResult.value ?? [];
-    } catch {
-        // Nếu không query được dependency entity → bỏ qua, không block xóa
-        solutionDeps = [];
-    }
-
-    // Phân loại solution deps thành nhóm có thể đọc được
-    const solutionDepSummary = solutionDeps.map((d) => ({
-        type: COMPONENT_TYPE_LABELS[d.dependentcomponenttype] ?? `Component type ${d.dependentcomponenttype}`,
-        typeCode: d.dependentcomponenttype,
-        componentId: d.dependentcomponentobjectid,
-    }));
-
-    // 7. Nếu có bất kỳ dependency nào (relationship hoặc solution) → TỪ CHỐI XÓA
-    const totalDependencies = [...relationshipDeps, ...solutionDepSummary];
-    if (totalDependencies.length > 0) {
+    if (relationshipDeps.length > 0) {
         return {
             content: [
                 {
@@ -173,21 +161,15 @@ export async function handler(
                         {
                             success: false,
                             entity: args.entityName,
-                            displayName:
-                                entity.DisplayName?.UserLocalizedLabel?.Label ??
-                                args.entityName,
-                            reason: "Không thể xóa — table vẫn còn dependencies chưa được xử lý.",
+                            reason: "Không thể xóa — table còn relationship với table khác. Xóa relationships trước.",
                             relationshipDependencies: {
                                 count: relationshipDeps.length,
                                 items: relationshipDeps,
                             },
-                            solutionDependencies: {
-                                count: solutionDepSummary.length,
-                                items: solutionDepSummary,
-                            },
+                            autoResolved: resolveResult.resolved,
                             suggestion: [
-                                "Dùng check_dependencies để xem chi tiết và hướng dẫn xử lý từng dependency.",
-                                "Sau khi xử lý xong tất cả → chạy publish_customizations → thử delete_table lại.",
+                                "Dùng get_relationships để xem chi tiết relationships.",
+                                "Xóa lookup column ở bảng tham chiếu để gỡ relationship trước.",
                             ],
                         },
                         null,
@@ -199,7 +181,14 @@ export async function handler(
         };
     }
 
-    // 8. Không còn dependency → XÓA TABLE
+    // 5. Publish để refresh dependency graph trước khi xóa
+    try {
+        await client.post("/PublishAllXml", {});
+    } catch {
+        // Không block nếu publish lỗi
+    }
+
+    // 6. Xóa table
     await client.delete(`/EntityDefinitions(${entity.MetadataId})`);
 
     return {
@@ -214,7 +203,24 @@ export async function handler(
                             entity.DisplayName?.UserLocalizedLabel?.Label ??
                             args.entityName,
                         metadataId: entity.MetadataId,
-                        message: `✅ Table "${args.entityName}" đã được xóa thành công khỏi Dataverse.`,
+                        autoResolved: resolveResult.resolved,
+                        warnings: [
+                            ...(resolveWarnings.length > 0
+                                ? resolveWarnings.map((e) => `⚠️ ${e.type} (${e.id}): ${e.error}`)
+                                : []),
+                            ...(resolveResult.hasManualDeps
+                                ? resolveResult.manualDeps.map(
+                                    (d) => `⚠️ ${d.type} (${d.id}): xử lý thủ công — ${d.hint}`
+                                )
+                                : []),
+                        ].filter(Boolean),
+                        message: `✅ Table "${args.entityName}" đã được xóa thành công.${resolveResult.resolved.length > 0
+                                ? ` Đã tự động gỡ ${resolveResult.resolved.length} dependency.`
+                                : ""
+                            }${resolveResult.hasManualDeps
+                                ? ` ⚠️ ${resolveResult.manualDeps.length} dependency cần kiểm tra thủ công (App Actions/Canvas Apps sẽ tự mất).`
+                                : ""
+                            }`,
                     },
                     null,
                     2

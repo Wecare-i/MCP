@@ -95,24 +95,56 @@ export async function handler(
     const nullThreshold = args.nullThreshold ?? 0;
 
     // 1. Lấy EntitySetName + PrimaryId
-    const entityMeta = await client.get<EntitySetInfo>(
-        `/EntityDefinitions(LogicalName='${entityName}')?$select=EntitySetName,PrimaryIdAttribute`
-    );
+    let entityMeta: EntitySetInfo;
+    try {
+        entityMeta = await client.get<EntitySetInfo>(
+            `/EntityDefinitions(LogicalName='${entityName}')?$select=EntitySetName,PrimaryIdAttribute`
+        );
+    } catch {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify({
+                        success: false,
+                        error: `❌ Table "${entityName}" không tồn tại trong Dataverse. Kiểm tra lại tên (dùng list_entities để xem danh sách tables).`,
+                    }),
+                },
+            ],
+            isError: true,
+        };
+    }
 
     // 2. Lấy attributes
     const filterParam = customOnly
         ? "&$filter=IsCustomAttribute eq true"
         : "";
 
-    const attrData = await client.get<ODataResponse<{
+    let attrData: ODataResponse<{
         LogicalName: string;
         DisplayName: { UserLocalizedLabel?: { Label: string } };
         AttributeType: string;
         IsPrimaryId: boolean;
         IsCustomAttribute: boolean;
-    }>>(
-        `/EntityDefinitions(LogicalName='${entityName}')/Attributes?$select=LogicalName,DisplayName,AttributeType,IsPrimaryId,IsCustomAttribute${filterParam}`
-    );
+    }>;
+    try {
+        attrData = await client.get<typeof attrData>(
+            `/EntityDefinitions(LogicalName='${entityName}')/Attributes?$select=LogicalName,DisplayName,AttributeType,IsPrimaryId,IsCustomAttribute${filterParam}`
+        );
+    } catch {
+        return {
+            content: [
+                {
+                    type: "text",
+                    text: JSON.stringify({
+                        success: false,
+                        error: `❌ Không thể lấy danh sách columns của table "${entityName}".`,
+                    }),
+                },
+            ],
+            isError: true,
+        };
+    }
 
     // 3. Lọc columns có thể dùng countcolumn
     const attrs: AttrInfo[] = attrData.value
