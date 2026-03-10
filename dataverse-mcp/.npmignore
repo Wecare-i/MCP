@@ -1,0 +1,18 @@
+# Source files (không cần thiết khi chạy)
+src/
+tsconfig.json
+*.ts
+!*.d.ts
+
+# Dev files
+node_modules/
+.env
+check-ai-table.js
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+npm-debug.log*
