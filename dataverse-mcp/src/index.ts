@@ -20,6 +20,8 @@ import {
     ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
 import { MsalAuth } from "./auth/msal-auth.js";
 import { DataverseClient } from "./client/dataverse-client.js";
@@ -46,7 +48,9 @@ import * as executeAction from "./tools/execute-action.js";
 
 // ─── Load Configuration ────────────────────────────────────────────────────
 
-dotenv.config();
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+dotenv.config({ path: path.resolve(__dirname, "..", ".env") });
 
 function getConfig(): DataverseConfig {
     const url = process.env.DATAVERSE_URL;

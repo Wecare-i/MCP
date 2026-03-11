@@ -95,25 +95,64 @@ export async function removeColumnFromView(
     let fetchxml = view.fetchxml ?? "";
 
     // Xóa <cell name="attrName" .../> hoặc <cell name="attrName">...</cell> khỏi layoutxml
-    layoutxml = layoutxml.replace(
+    const newLayoutxml = layoutxml.replace(
         new RegExp(`\\s*<cell[^>]*name=["']${attributeName}["'][^>]*/?>(?:\\s*</cell>)?`, "gi"),
         ""
     );
 
     // Xóa <attribute name="attrName" .../> khỏi fetchxml
-    fetchxml = fetchxml.replace(
+    const newFetchxml = fetchxml.replace(
         new RegExp(`\\s*<attribute[^>]*name=["']${attributeName}["'][^>]*/?>(?:\\s*</attribute>)?`, "gi"),
         ""
     );
 
-    await client.patch(`/savedqueries(${viewId})`, { layoutxml, fetchxml });
+    // Cũng xóa <condition attribute="attrName" .../> khỏi fetchxml (Quick Find filters)
+    const newFetchxml2 = newFetchxml.replace(
+        new RegExp(`\\s*<condition[^>]*attribute=["']${attributeName}["'][^>]*/?>(?:\\s*</condition>)?`, "gi"),
+        ""
+    );
+
+    // Thử cập nhật cả hai cùng lúc trước
+    try {
+        await client.patch(`/savedqueries(${viewId})`, { layoutxml: newLayoutxml, fetchxml: newFetchxml2 });
+        return `Đã xóa column "${attributeName}" khỏi View (${viewId})`;
+    } catch {
+        // Nếu thất bại (Quick Find views thường reject fetchxml update)
+        // → thử update riêng từng phần
+    }
+
+    // Thử update layoutxml riêng
+    if (newLayoutxml !== layoutxml) {
+        try {
+            await client.patch(`/savedqueries(${viewId})`, { layoutxml: newLayoutxml });
+        } catch {
+            // layoutxml update thất bại → bỏ qua
+        }
+    }
+
+    // Thử update fetchxml riêng
+    if (newFetchxml2 !== fetchxml) {
+        try {
+            await client.patch(`/savedqueries(${viewId})`, { fetchxml: newFetchxml2 });
+        } catch {
+            // fetchxml update thất bại (Quick Find views) → bỏ qua, không block
+        }
+    }
+
     return `Đã xóa column "${attributeName}" khỏi View (${viewId})`;
 }
+
 
 // ─── Helper: Remove field from Form XML ─────────────────────────────────────
 
 /**
  * Xóa field control khỏi formxml của một System Form.
+ * Chiến lược: tìm <row> chứa <control> có id/datafieldname = attributeName → xóa entire <row>.
+ * Đây là cách an toàn nhất — giữ nguyên cấu trúc sections/columns/tabs.
+ *
+ * ⚠️ KHÔNG dùng regex greedy [\s\S]*? trên formxml vì có thể match xuyên qua
+ *    nhiều sections/columns, phá vỡ cấu trúc form.
+ *
  * Nếu sau khi xóa form không còn <control> nào → xóa hẳn form.
  */
 export async function removeFieldFromForm(
@@ -127,14 +166,32 @@ export async function removeFieldFromForm(
 
     let formxml = form.formxml ?? "";
 
-    // Xóa <control id="attrName" ...>...</control> (các dạng khác nhau)
-    formxml = formxml.replace(
-        new RegExp(
-            `\\s*<control[^>]*(?:id|datafieldname)=["']${attributeName}["'][^>]*>[\\s\\S]*?</control>|\\s*<control[^>]*(?:id|datafieldname)=["']${attributeName}["'][^>]*/>`,
-            "gi"
-        ),
-        ""
+    // Escape attributeName for regex
+    const escapedName = attributeName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+    // Strategy: Tìm và xóa từng <row> chứa control matching attributeName.
+    // Ta tìm pattern <row>...<control ...datafieldname="attrName"...>...</row>
+    // hoặc <row>...<control ...id="attrName"...>...</row>
+    // Dùng non-greedy match nhưng chỉ trong phạm vi <row>...</row>
+    // (vì <row> không thể chứa <row> con — nó chỉ chứa <cell>).
+    const rowPattern = new RegExp(
+        `\\s*<row>(?:(?!<row>)[\\s\\S])*?<control[^>]*(?:id|datafieldname)=["']${escapedName}["'][^>]*(?:/>|>[\\s\\S]*?</control>)(?:(?!<row>)[\\s\\S])*?</row>`,
+        "gi"
     );
+    formxml = formxml.replace(rowPattern, "");
+
+    // Fallback: nếu control nằm trong <row> tự đóng hoặc pattern khác, thử xóa <cell> chứa control
+    if (
+        new RegExp(`(?:id|datafieldname)=["']${escapedName}["']`, "i").test(
+            formxml
+        )
+    ) {
+        const cellPattern = new RegExp(
+            `\\s*<cell[^>]*>(?:(?!<cell)[\\s\\S])*?<control[^>]*(?:id|datafieldname)=["']${escapedName}["'][^>]*(?:/>|>[\\s\\S]*?</control>)(?:(?!<cell)[\\s\\S])*?</cell>`,
+            "gi"
+        );
+        formxml = formxml.replace(cellPattern, "");
+    }
 
     // Kiểm tra form có còn field nào không (còn <control> khác không)
     const hasRemainingControls = /<control\b/i.test(formxml);

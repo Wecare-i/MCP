@@ -188,8 +188,62 @@ export async function handler(
         // Không block nếu publish lỗi
     }
 
-    // 6. Xóa table
-    await client.delete(`/EntityDefinitions(${entity.MetadataId})`);
+    // 6. Xóa table (với retry để xử lý computed column dependencies)
+    const MAX_RETRIES = 5;
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+        try {
+            await client.delete(`/EntityDefinitions(${entity.MetadataId})`);
+            break; // Thành công → thoát loop
+        } catch (err: unknown) {
+            const errMsg = err instanceof Error ? err.message : String(err);
+
+            // Parse lỗi "column X is dependent on column Y" → xóa các column dependents
+            const depPattern = /The column '(\w+)' is dependent on column '(\w+)'/g;
+            const depsToDelete = new Set<string>();
+            let match;
+            while ((match = depPattern.exec(errMsg)) !== null) {
+                depsToDelete.add(match[1].toLowerCase());
+            }
+
+            if (depsToDelete.size === 0 || attempt === MAX_RETRIES - 1) {
+                // Không parse được deps hoặc đã hết retry → throw lỗi gốc
+                throw err;
+            }
+
+            // Xóa từng computed column phụ thuộc
+            for (const colName of depsToDelete) {
+                try {
+                    // Lấy metadata của column
+                    const attrMeta = await client.get<{ MetadataId: string }>(
+                        `/EntityDefinitions(LogicalName='${args.entityName}')/Attributes(LogicalName='${colName}')?$select=MetadataId`
+                    );
+                    // Resolve dependencies của column trước
+                    await resolveBlockingDeps(client, attrMeta.MetadataId, 2, {
+                        deleteContainers: false,
+                        attributeName: colName,
+                        entityName: args.entityName,
+                    });
+                    // Publish
+                    try {
+                        const entitiesXml = `<importexportxml><entities><entity>${args.entityName}</entity></entities></importexportxml>`;
+                        await client.post("/PublishXml", { ParameterXml: entitiesXml });
+                    } catch { /* continue */ }
+                    // Xóa column
+                    await client.delete(
+                        `/EntityDefinitions(LogicalName='${args.entityName}')/Attributes(${attrMeta.MetadataId})`
+                    );
+                } catch {
+                    // Bỏ qua nếu một column xóa lỗi → retry sẽ xử lý tiếp
+                }
+            }
+
+            // Publish lại trước khi retry xóa table
+            try {
+                const entitiesXml = `<importexportxml><entities><entity>${args.entityName}</entity></entities></importexportxml>`;
+                await client.post("/PublishXml", { ParameterXml: entitiesXml });
+            } catch { /* continue */ }
+        }
+    }
 
     return {
         content: [
@@ -215,8 +269,8 @@ export async function handler(
                                 : []),
                         ].filter(Boolean),
                         message: `✅ Table "${args.entityName}" đã được xóa thành công.${resolveResult.resolved.length > 0
-                                ? ` Đã tự động gỡ ${resolveResult.resolved.length} dependency.`
-                                : ""
+                            ? ` Đã tự động gỡ ${resolveResult.resolved.length} dependency.`
+                            : ""
                             }${resolveResult.hasManualDeps
                                 ? ` ⚠️ ${resolveResult.manualDeps.length} dependency cần kiểm tra thủ công (App Actions/Canvas Apps sẽ tự mất).`
                                 : ""

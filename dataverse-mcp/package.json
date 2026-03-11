@@ -1,44 +1,14 @@
 {
-  "name": "@wecare-team/dataverse-mcp",
+  "name": "dataverse-mcp",
   "version": "1.1.0",
-  "description": "MCP Server kết nối Microsoft Dataverse cho Claude/Antigravity IDE. Cung cấp 17 tools: CRUD, FetchXML, OptionSet, Relationships, Dependencies, Quality Analysis.",
+  "description": "Custom MCP Server kết nối Microsoft Dataverse cho Antigravity IDE",
   "type": "module",
   "main": "build/index.js",
-  "bin": {
-    "dataverse-mcp": "build/index.js"
-  },
-  "files": [
-    "build/",
-    "README.md",
-    ".env.example"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
   "scripts": {
     "build": "tsc",
     "start": "node build/index.js",
-    "dev": "tsc --watch",
-    "prepublishOnly": "npm run build"
+    "dev": "tsc --watch"
   },
-  "keywords": [
-    "mcp",
-    "model-context-protocol",
-    "dataverse",
-    "microsoft",
-    "dynamics",
-    "power-platform",
-    "claude",
-    "antigravity",
-    "ai-tools"
-  ],
-  "author": "wcg-hieule",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/Wecare-i/MCP"
-  },
-  "homepage": "https://github.com/Wecare-i/MCP/tree/main/dataverse-mcp",
   "dependencies": {
     "@azure/msal-node": "^2.16.0",
     "@modelcontextprotocol/sdk": "^1.12.1",
