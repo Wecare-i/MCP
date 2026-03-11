@@ -11,6 +11,7 @@ import {
     WorkspaceListSchema,
     WorkspaceGetSchema,
     WorkspaceListItemsSchema,
+    WorkspaceFindByNameSchema,
 } from "../schemas/workspaceSchemas.js";
 
 type ClientGetter = () => FabricRestClient;
@@ -109,6 +110,39 @@ export function registerWorkspaceTools(server: McpServer, getClient: ClientGette
                             text: `Error: ${error instanceof Error ? error.message : String(error)}`,
                         },
                     ],
+                    isError: true,
+                };
+            }
+        }
+    );
+
+    // ─── Find Workspace by Name ──────────────────────────
+    server.tool(
+        "workspace_find_by_name",
+        "Tìm workspace theo tên (không phân biệt hoa thường). Trả về ID và thông tin workspace khớp.",
+        WorkspaceFindByNameSchema.shape,
+        async ({ name }) => {
+            try {
+                const client = getClient();
+                const data = await client.get<{ value: Array<{ id: string; displayName: string;[key: string]: unknown }> }>("/workspaces");
+                const matches = (data.value || []).filter(
+                    (ws) => ws.displayName?.toLowerCase().includes(name.toLowerCase())
+                );
+                return {
+                    content: [
+                        {
+                            type: "text" as const,
+                            text: JSON.stringify({
+                                searchTerm: name,
+                                matchCount: matches.length,
+                                workspaces: matches,
+                            }, null, 2),
+                        },
+                    ],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
                     isError: true,
                 };
             }

@@ -61,7 +61,25 @@ MCP server cho phép AI (Claude, Gemini, VS Code Copilot...) kết nối và tư
 | `notebook_run` | Kích hoạt chạy Notebook trên Spark (hỗ trợ parameters) ⚠️ |
 | `notebook_get_status` | Xem trạng thái chạy (job instances) của Notebook |
 
-> **⚠️ Lưu ý:** Các tool `dataflow_run` và `notebook_run` sẽ thực sự kích hoạt chạy trên Fabric capacity — hãy cẩn thận khi sử dụng.
+### 🔗 Data Pipeline
+
+| Tool | Mô tả |
+|------|--------|
+| `pipeline_list` | Liệt kê tất cả Data Pipelines trong workspace |
+| `pipeline_get` | Lấy thông tin chi tiết một Data Pipeline |
+| `pipeline_run` | Kích hoạt chạy (trigger) một Data Pipeline ⚠️ |
+| `pipeline_get_status` | Xem trạng thái chạy (job instances) của Pipeline |
+
+### 🚀 CI/CD Deployment
+
+| Tool | Mô tả |
+|------|--------|
+| `cicd_list_pipelines` | Liệt kê tất cả Deployment Pipelines (CI/CD) |
+| `cicd_get_pipeline` | Lấy thông tin chi tiết một Deployment Pipeline |
+| `cicd_get_stages` | Liệt kê stages (Dev, Test, Prod) và items trong mỗi stage |
+| `cicd_deploy` | Deploy (promote) items từ stage sang stage ⚠️ |
+
+> **⚠️ Lưu ý:** Các tool `dataflow_run`, `notebook_run`, `pipeline_run` và `cicd_deploy` sẽ thực sự kích hoạt chạy/deploy trên Fabric — hãy cẩn thận khi sử dụng.
 
 ## �🚀 Cài đặt
 

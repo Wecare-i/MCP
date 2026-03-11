@@ -1,8 +1,14 @@
 /**
  * Zod Schemas cho Table Tools
+ * Mỗi schema có sql_endpoint + database optional để hỗ trợ multi-database.
  */
 
 import { z } from "zod";
+
+const sqlConnectionParams = {
+    sql_endpoint: z.string().optional().describe("SQL Endpoint (bỏ trống = dùng mặc định từ .env)"),
+    database: z.string().optional().describe("Database name (bỏ trống = dùng mặc định từ .env)"),
+};
 
 export const ListTablesInputSchema = z.object({
     schema_filter: z
@@ -11,6 +17,7 @@ export const ListTablesInputSchema = z.object({
         .describe(
             "Lọc theo schema name (ví dụ: 'dbo'). Bỏ trống để xem tất cả schemas."
         ),
+    ...sqlConnectionParams,
 });
 
 export const GetTableSchemaInputSchema = z.object({
@@ -22,6 +29,7 @@ export const GetTableSchemaInputSchema = z.object({
         .string()
         .default("dbo")
         .describe("Tên schema chứa table (mặc định: 'dbo')"),
+    ...sqlConnectionParams,
 });
 
 export const PreviewTableInputSchema = z.object({
@@ -40,6 +48,7 @@ export const PreviewTableInputSchema = z.object({
         .max(100)
         .default(10)
         .describe("Số dòng cần lấy (1-100, mặc định: 10)"),
+    ...sqlConnectionParams,
 });
 
 export const SearchTablesInputSchema = z.object({
@@ -49,4 +58,5 @@ export const SearchTablesInputSchema = z.object({
         .describe(
             "Pattern tìm kiếm tên table (ví dụ: 'order' sẽ tìm tất cả tables chứa 'order')"
         ),
+    ...sqlConnectionParams,
 });

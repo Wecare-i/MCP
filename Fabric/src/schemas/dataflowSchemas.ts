@@ -18,3 +18,8 @@ export const DataflowGetStatusSchema = z.object({
     workspace_id: z.string().optional().describe("Workspace ID"),
     dataflow_id: z.string().min(1).describe("ID của Dataflow Gen2"),
 });
+
+export const DataflowFindByNameSchema = z.object({
+    workspace_id: z.string().optional().describe("Workspace ID"),
+    name: z.string().min(1).describe("Tên dataflow cần tìm (không phân biệt hoa thường)"),
+});

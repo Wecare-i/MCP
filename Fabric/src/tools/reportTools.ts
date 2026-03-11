@@ -13,6 +13,7 @@ import {
     ReportGetPagesSchema,
     DashboardListSchema,
     DashboardGetTilesSchema,
+    ReportFindByNameSchema,
 } from "../schemas/reportSchemas.js";
 
 type ClientGetter = () => PowerBIClient;
@@ -118,6 +119,40 @@ export function registerReportTools(server: McpServer, getClient: ClientGetter) 
                 const data = await client.get(`/groups/${groupId}/dashboards/${dashboard_id}/tiles`);
                 return {
                     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                    isError: true,
+                };
+            }
+        }
+    );
+
+    // ─── Find Report by Name ─────────────────────────────
+    server.tool(
+        "reports_find_by_name",
+        "Tìm Report theo tên (không phân biệt hoa thường). Trả về ID và thông tin report khớp.",
+        ReportFindByNameSchema.shape,
+        async ({ workspace_id, name }) => {
+            try {
+                const client = getClient();
+                const groupId = workspace_id || client.getGroupId();
+                const data = await client.get<{ value: Array<{ id: string; name: string;[key: string]: unknown }> }>(`/groups/${groupId}/reports`);
+                const matches = (data.value || []).filter(
+                    (r) => r.name?.toLowerCase().includes(name.toLowerCase())
+                );
+                return {
+                    content: [
+                        {
+                            type: "text" as const,
+                            text: JSON.stringify({
+                                searchTerm: name,
+                                matchCount: matches.length,
+                                reports: matches,
+                            }, null, 2),
+                        },
+                    ],
                 };
             } catch (error) {
                 return {

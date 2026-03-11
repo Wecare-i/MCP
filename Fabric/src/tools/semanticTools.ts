@@ -11,6 +11,8 @@ import {
     SemanticListModelsSchema,
     SemanticGetModelSchema,
     SemanticExecuteDaxSchema,
+    SemanticFindByNameSchema,
+    SemanticRefreshModelSchema,
 } from "../schemas/semanticSchemas.js";
 
 type ClientGetter = () => PowerBIClient;
@@ -78,6 +80,70 @@ export function registerSemanticTools(server: McpServer, getClient: ClientGetter
                 );
                 return {
                     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                    isError: true,
+                };
+            }
+        }
+    );
+
+    // ─── Find Semantic Model by Name ─────────────────────
+    server.tool(
+        "semantic_find_by_name",
+        "Tìm Semantic Model theo tên (không phân biệt hoa thường). Trả về ID và thông tin model khớp.",
+        SemanticFindByNameSchema.shape,
+        async ({ workspace_id, name }) => {
+            try {
+                const client = getClient();
+                const groupId = workspace_id || client.getGroupId();
+                const data = await client.get<{ value: Array<{ id: string; name: string;[key: string]: unknown }> }>(`/groups/${groupId}/datasets`);
+                const matches = (data.value || []).filter(
+                    (m) => m.name?.toLowerCase().includes(name.toLowerCase())
+                );
+                return {
+                    content: [
+                        {
+                            type: "text" as const,
+                            text: JSON.stringify({
+                                searchTerm: name,
+                                matchCount: matches.length,
+                                models: matches,
+                            }, null, 2),
+                        },
+                    ],
+                };
+            } catch (error) {
+                return {
+                    content: [{ type: "text" as const, text: `Error: ${error instanceof Error ? error.message : String(error)}` }],
+                    isError: true,
+                };
+            }
+        }
+    );
+
+    // ─── Refresh Semantic Model ──────────────────────────
+    server.tool(
+        "semantic_refresh_model",
+        "Trigger refresh (cập nhật dữ liệu) cho một Semantic Model. ⚠️ Thao tác này sẽ thực sự refresh dataset.",
+        SemanticRefreshModelSchema.shape,
+        async ({ workspace_id, model_id }) => {
+            try {
+                const client = getClient();
+                const groupId = workspace_id || client.getGroupId();
+                const data = await client.post(`/groups/${groupId}/datasets/${model_id}/refreshes`);
+                return {
+                    content: [
+                        {
+                            type: "text" as const,
+                            text: JSON.stringify({
+                                message: "Semantic model refresh triggered successfully",
+                                response: data,
+                            }, null, 2),
+                        },
+                    ],
                 };
             } catch (error) {
                 return {

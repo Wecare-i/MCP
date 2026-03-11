@@ -36,6 +36,9 @@ import { registerSemanticTools } from "./tools/semanticTools.js";
 import { registerReportTools } from "./tools/reportTools.js";
 import { registerDataflowTools } from "./tools/dataflowTools.js";
 import { registerNotebookTools } from "./tools/notebookTools.js";
+import { registerPipelineTools } from "./tools/pipelineTools.js";
+import { registerCicdTools } from "./tools/cicdTools.js";
+import { registerLakehouseTools } from "./tools/lakehouseTools.js";
 
 import type { FabricConfig } from "./types.js";
 
@@ -46,8 +49,6 @@ dotenv.config();
 
 function loadConfig(): FabricConfig {
     const required = [
-        "FABRIC_SQL_ENDPOINT",
-        "FABRIC_DATABASE",
         "FABRIC_TENANT_ID",
         "FABRIC_CLIENT_ID",
         "FABRIC_CLIENT_SECRET",
@@ -63,8 +64,8 @@ function loadConfig(): FabricConfig {
     }
 
     return {
-        sqlEndpoint: process.env.FABRIC_SQL_ENDPOINT!,
-        database: process.env.FABRIC_DATABASE!,
+        sqlEndpoint: process.env.FABRIC_SQL_ENDPOINT || undefined,
+        database: process.env.FABRIC_DATABASE || undefined,
         tenantId: process.env.FABRIC_TENANT_ID!,
         clientId: process.env.FABRIC_CLIENT_ID!,
         clientSecret: process.env.FABRIC_CLIENT_SECRET!,
@@ -114,6 +115,15 @@ async function main() {
 
     // Notebooks & Spark tools (REST)
     registerNotebookTools(server, getRestClient);
+
+    // Data Pipeline tools (REST)
+    registerPipelineTools(server, getRestClient);
+
+    // CI/CD Deployment Pipeline tools (REST)
+    registerCicdTools(server, getRestClient);
+
+    // Lakehouse Management tools (REST + SQL)
+    registerLakehouseTools(server, getRestClient, getSqlClient);
 
     // ─── Register Resources ─────────────────────────────────
 
@@ -194,7 +204,7 @@ async function main() {
     console.error(`   SQL Endpoint: ${config.sqlEndpoint}`);
     console.error(`   Database: ${config.database}`);
     console.error(`   Workspace ID: ${config.workspaceId || "not configured"}`);
-    console.error(`   Domains: Lakehouse, Workspace, Semantic, Reports, Dataflow, Notebook`);
+    console.error(`   Domains: Lakehouse, Workspace, Semantic, Reports, Dataflow, Notebook, Pipeline, CI/CD`);
 
     // Graceful shutdown
     process.on("SIGINT", async () => {

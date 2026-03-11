@@ -1,33 +1,33 @@
 /**
- * Dataflow Gen2 Tools
+ * Data Pipeline Tools
  *
- * Tools cho phép AI quản lý và chạy Dataflow Gen2.
- * Sử dụng Fabric REST API.
+ * Tools cho phép AI quản lý và chạy Fabric Data Pipelines.
+ * Sử dụng Fabric REST API (api.fabric.microsoft.com/v1).
  */
 
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { FabricRestClient } from "../services/fabricRestClient.js";
 import {
-    DataflowListSchema,
-    DataflowGetSchema,
-    DataflowRunSchema,
-    DataflowGetStatusSchema,
-    DataflowFindByNameSchema,
-} from "../schemas/dataflowSchemas.js";
+    PipelineListSchema,
+    PipelineGetSchema,
+    PipelineRunSchema,
+    PipelineGetStatusSchema,
+    PipelineFindByNameSchema,
+} from "../schemas/pipelineSchemas.js";
 
 type ClientGetter = () => FabricRestClient;
 
-export function registerDataflowTools(server: McpServer, getClient: ClientGetter) {
-    // ─── List Dataflows ──────────────────────────────────
+export function registerPipelineTools(server: McpServer, getClient: ClientGetter) {
+    // ─── List Pipelines ──────────────────────────────────
     server.tool(
-        "dataflow_list",
-        "Liệt kê tất cả Dataflow Gen2 trong workspace",
-        DataflowListSchema.shape,
+        "pipeline_list",
+        "Liệt kê tất cả Data Pipelines trong workspace",
+        PipelineListSchema.shape,
         async ({ workspace_id }) => {
             try {
                 const client = getClient();
                 const wsId = workspace_id || client.getWorkspaceId();
-                const data = await client.get(`/workspaces/${wsId}/dataflows`);
+                const data = await client.get(`/workspaces/${wsId}/dataPipelines`);
                 return {
                     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
                 };
@@ -40,16 +40,16 @@ export function registerDataflowTools(server: McpServer, getClient: ClientGetter
         }
     );
 
-    // ─── Get Dataflow ────────────────────────────────────
+    // ─── Get Pipeline ────────────────────────────────────
     server.tool(
-        "dataflow_get",
-        "Lấy thông tin chi tiết một Dataflow Gen2",
-        DataflowGetSchema.shape,
-        async ({ workspace_id, dataflow_id }) => {
+        "pipeline_get",
+        "Lấy thông tin chi tiết một Data Pipeline",
+        PipelineGetSchema.shape,
+        async ({ workspace_id, pipeline_id }) => {
             try {
                 const client = getClient();
                 const wsId = workspace_id || client.getWorkspaceId();
-                const data = await client.get(`/workspaces/${wsId}/dataflows/${dataflow_id}`);
+                const data = await client.get(`/workspaces/${wsId}/dataPipelines/${pipeline_id}`);
                 return {
                     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
                 };
@@ -62,24 +62,24 @@ export function registerDataflowTools(server: McpServer, getClient: ClientGetter
         }
     );
 
-    // ─── Run Dataflow ────────────────────────────────────
+    // ─── Run Pipeline ────────────────────────────────────
     server.tool(
-        "dataflow_run",
-        "Kích hoạt chạy (trigger refresh) một Dataflow Gen2. ⚠️ Thao tác này sẽ thực sự chạy dataflow trên Fabric capacity.",
-        DataflowRunSchema.shape,
-        async ({ workspace_id, dataflow_id }) => {
+        "pipeline_run",
+        "Kích hoạt chạy (trigger) một Data Pipeline. ⚠️ Thao tác này sẽ thực sự chạy pipeline trên Fabric.",
+        PipelineRunSchema.shape,
+        async ({ workspace_id, pipeline_id }) => {
             try {
                 const client = getClient();
                 const wsId = workspace_id || client.getWorkspaceId();
                 const data = await client.post(
-                    `/workspaces/${wsId}/items/${dataflow_id}/jobs/instances?jobType=DefaultJob`
+                    `/workspaces/${wsId}/items/${pipeline_id}/jobs/instances?jobType=Pipeline`
                 );
                 return {
                     content: [
                         {
                             type: "text" as const,
                             text: JSON.stringify({
-                                message: "Dataflow run triggered successfully",
+                                message: "Pipeline run triggered successfully",
                                 response: data,
                             }, null, 2),
                         },
@@ -94,17 +94,17 @@ export function registerDataflowTools(server: McpServer, getClient: ClientGetter
         }
     );
 
-    // ─── Get Dataflow Run Status ─────────────────────────
+    // ─── Get Pipeline Run Status ─────────────────────────
     server.tool(
-        "dataflow_get_status",
-        "Xem trạng thái chạy (job instances) của một Dataflow Gen2",
-        DataflowGetStatusSchema.shape,
-        async ({ workspace_id, dataflow_id }) => {
+        "pipeline_get_status",
+        "Xem trạng thái chạy (job instances) của một Data Pipeline",
+        PipelineGetStatusSchema.shape,
+        async ({ workspace_id, pipeline_id }) => {
             try {
                 const client = getClient();
                 const wsId = workspace_id || client.getWorkspaceId();
                 const data = await client.get(
-                    `/workspaces/${wsId}/items/${dataflow_id}/jobs/instances`
+                    `/workspaces/${wsId}/items/${pipeline_id}/jobs/instances`
                 );
                 return {
                     content: [{ type: "text" as const, text: JSON.stringify(data, null, 2) }],
@@ -118,18 +118,18 @@ export function registerDataflowTools(server: McpServer, getClient: ClientGetter
         }
     );
 
-    // ─── Find Dataflow by Name ───────────────────────────
+    // ─── Find Pipeline by Name ───────────────────────────
     server.tool(
-        "dataflow_find_by_name",
-        "Tìm Dataflow Gen2 theo tên (không phân biệt hoa thường). Trả về ID và thông tin dataflow khớp.",
-        DataflowFindByNameSchema.shape,
+        "pipeline_find_by_name",
+        "Tìm Data Pipeline theo tên (không phân biệt hoa thường). Trả về ID và thông tin pipeline khớp.",
+        PipelineFindByNameSchema.shape,
         async ({ workspace_id, name }) => {
             try {
                 const client = getClient();
                 const wsId = workspace_id || client.getWorkspaceId();
-                const data = await client.get<{ value: Array<{ id: string; displayName: string;[key: string]: unknown }> }>(`/workspaces/${wsId}/dataflows`);
+                const data = await client.get<{ value: Array<{ id: string; displayName: string;[key: string]: unknown }> }>(`/workspaces/${wsId}/dataPipelines`);
                 const matches = (data.value || []).filter(
-                    (df) => df.displayName?.toLowerCase().includes(name.toLowerCase())
+                    (p) => p.displayName?.toLowerCase().includes(name.toLowerCase())
                 );
                 return {
                     content: [
@@ -138,7 +138,7 @@ export function registerDataflowTools(server: McpServer, getClient: ClientGetter
                             text: JSON.stringify({
                                 searchTerm: name,
                                 matchCount: matches.length,
-                                dataflows: matches,
+                                pipelines: matches,
                             }, null, 2),
                         },
                     ],

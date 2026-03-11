@@ -56,7 +56,7 @@ Ví dụ:
                 }
 
                 const client = getClient();
-                const result = await client.executeQuery(safeSql);
+                const result = await client.executeQuery(safeSql, params.sql_endpoint, params.database);
 
                 const output = {
                     sql: safeSql,
@@ -99,7 +99,9 @@ Ví dụ: table_name = "orders"`,
                 const client = getClient();
                 const count = await client.getRowCount(
                     params.table_name,
-                    params.schema_name
+                    params.schema_name,
+                    params.sql_endpoint,
+                    params.database
                 );
 
                 const result = {

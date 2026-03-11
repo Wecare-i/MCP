@@ -22,3 +22,8 @@ export const DashboardGetTilesSchema = z.object({
     workspace_id: z.string().optional().describe("Workspace ID"),
     dashboard_id: z.string().min(1).describe("ID của dashboard"),
 });
+
+export const ReportFindByNameSchema = z.object({
+    workspace_id: z.string().optional().describe("Workspace ID"),
+    name: z.string().min(1).describe("Tên report cần tìm (không phân biệt hoa thường)"),
+});

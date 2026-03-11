@@ -44,7 +44,9 @@ Ví dụ: table_name = "orders", column_name = "total_amount"`,
                 const stats = await client.getColumnStats(
                     params.table_name,
                     params.column_name,
-                    params.schema_name
+                    params.schema_name,
+                    params.sql_endpoint,
+                    params.database
                 );
 
                 const result = {
@@ -87,9 +89,9 @@ Ví dụ: table_name = "users"`,
 
                 // Lấy song song: schema, row count, sample data
                 const [columns, rowCount, preview] = await Promise.all([
-                    client.getTableSchema(params.table_name, params.schema_name),
-                    client.getRowCount(params.table_name, params.schema_name),
-                    client.previewTable(params.table_name, params.schema_name, 3),
+                    client.getTableSchema(params.table_name, params.schema_name, params.sql_endpoint, params.database),
+                    client.getRowCount(params.table_name, params.schema_name, params.sql_endpoint, params.database),
+                    client.previewTable(params.table_name, params.schema_name, 3, params.sql_endpoint, params.database),
                 ]);
 
                 const result = {

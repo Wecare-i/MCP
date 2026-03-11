@@ -42,7 +42,7 @@ Ví dụ:
         async (params) => {
             try {
                 const client = getClient();
-                let tables = await client.getTables();
+                let tables = await client.getTables(params.sql_endpoint, params.database);
 
                 if (params.schema_filter) {
                     tables = tables.filter(
@@ -94,7 +94,9 @@ Ví dụ: table_name = "users", schema_name = "dbo"`,
                 const client = getClient();
                 const columns = await client.getTableSchema(
                     params.table_name,
-                    params.schema_name
+                    params.schema_name,
+                    params.sql_endpoint,
+                    params.database
                 );
 
                 if (columns.length === 0) {
@@ -155,7 +157,9 @@ Ví dụ: table_name = "orders", limit = 5`,
                 const result = await client.previewTable(
                     params.table_name,
                     params.schema_name,
-                    params.limit
+                    params.limit,
+                    params.sql_endpoint,
+                    params.database
                 );
 
                 const output = {
@@ -195,7 +199,7 @@ Ví dụ: pattern = "order" sẽ tìm tất cả tables có chứa "order" trong
         async (params) => {
             try {
                 const client = getClient();
-                const tables = await client.searchTables(params.pattern);
+                const tables = await client.searchTables(params.pattern, params.sql_endpoint, params.database);
 
                 if (tables.length === 0) {
                     return {

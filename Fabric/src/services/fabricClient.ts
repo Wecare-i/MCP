@@ -1,11 +1,9 @@
 /**
  * Fabric Lakehouse Client
  *
- * Kết nối tới Fabric SQL Endpoint qua tedious driver trực tiếp.
+ * Kết nối tới Fabric SQL Endpoint qua tedious driver.
+ * Hỗ trợ MULTI-DATABASE: connection pool by "endpoint:database" key.
  * Authentication bằng Azure Service Principal → Access Token.
- *
- * Lưu ý: mssql ConnectionPool không tương thích 100% Fabric SQL Endpoint,
- * nên dùng tedious Connection trực tiếp.
  */
 
 import { Connection, Request, TYPES } from "tedious";
@@ -14,10 +12,10 @@ import type { FabricConfig, QueryResult, TableInfo, ColumnInfo } from "../types.
 import { FABRIC_SQL_SCOPE, QUERY_TIMEOUT_MS } from "../constants.js";
 
 export class FabricClient {
-    private connection: Connection | null = null;
+    private connections = new Map<string, Connection>();
+    private connectionStatus = new Map<string, boolean>();
     private credential: ClientSecretCredential;
     private config: FabricConfig;
-    private isConnected = false;
 
     constructor(config: FabricConfig) {
         this.config = config;
@@ -37,14 +35,37 @@ export class FabricClient {
     }
 
     /**
+     * Resolve endpoint + database (dùng params hoặc fallback về config)
+     */
+    private resolveConnection(endpoint?: string, database?: string): { endpoint: string; database: string } {
+        const ep = endpoint || this.config.sqlEndpoint;
+        const db = database || this.config.database;
+        if (!ep || !db) {
+            throw new Error(
+                "SQL Endpoint và Database chưa được cấu hình. " +
+                "Hãy thiết lập FABRIC_SQL_ENDPOINT + FABRIC_DATABASE trong .env, " +
+                "hoặc truyền sql_endpoint + database khi gọi tool."
+            );
+        }
+        return { endpoint: ep, database: db };
+    }
+
+    /**
+     * Tạo connection key từ endpoint + database
+     */
+    private makeKey(endpoint: string, database: string): string {
+        return `${endpoint}:${database}`;
+    }
+
+    /**
      * Tạo connection mới tới Fabric SQL Endpoint
      */
-    private async createConnection(): Promise<Connection> {
+    private async createConnection(endpoint: string, database: string): Promise<Connection> {
         const accessToken = await this.getAccessToken();
 
         return new Promise((resolve, reject) => {
             const connection = new Connection({
-                server: this.config.sqlEndpoint,
+                server: endpoint,
                 authentication: {
                     type: "azure-active-directory-access-token",
                     options: {
@@ -52,7 +73,7 @@ export class FabricClient {
                     },
                 },
                 options: {
-                    database: this.config.database,
+                    database: database,
                     encrypt: true,
                     port: 1433,
                     trustServerCertificate: false,
@@ -60,6 +81,8 @@ export class FabricClient {
                     requestTimeout: QUERY_TIMEOUT_MS,
                 },
             });
+
+            const key = this.makeKey(endpoint, database);
 
             connection.on("connect", (err) => {
                 if (err) {
@@ -70,8 +93,8 @@ export class FabricClient {
             });
 
             connection.on("error", (err) => {
-                console.error("Connection error:", err.message);
-                this.isConnected = false;
+                console.error(`Connection error [${key}]:`, err.message);
+                this.connectionStatus.set(key, false);
             });
 
             connection.connect();
@@ -79,41 +102,47 @@ export class FabricClient {
     }
 
     /**
-     * Kết nối tới Fabric SQL Endpoint
+     * Lấy hoặc tạo connection (pool by key)
      */
-    async connect(): Promise<void> {
-        if (this.isConnected && this.connection) return;
-        this.connection = await this.createConnection();
-        this.isConnected = true;
-    }
+    private async ensureConnected(endpoint?: string, database?: string): Promise<Connection> {
+        const resolved = this.resolveConnection(endpoint, database);
+        const key = this.makeKey(resolved.endpoint, resolved.database);
 
-    /**
-     * Đảm bảo connection còn sống, reconnect nếu cần
-     */
-    private async ensureConnected(): Promise<Connection> {
-        if (!this.isConnected || !this.connection) {
-            this.connection = await this.createConnection();
-            this.isConnected = true;
+        const isConnected = this.connectionStatus.get(key) || false;
+        if (isConnected && this.connections.has(key)) {
+            return this.connections.get(key)!;
         }
-        return this.connection;
+
+        const conn = await this.createConnection(resolved.endpoint, resolved.database);
+        this.connections.set(key, conn);
+        this.connectionStatus.set(key, true);
+        return conn;
     }
 
     /**
-     * Đóng kết nối
+     * Cập nhật default SQL endpoint + database (runtime switch)
+     */
+    switchDefault(endpoint: string, database: string): void {
+        this.config.sqlEndpoint = endpoint;
+        this.config.database = database;
+    }
+
+    /**
+     * Đóng tất cả connections
      */
     async disconnect(): Promise<void> {
-        if (this.connection) {
-            this.connection.close();
-            this.connection = null;
-            this.isConnected = false;
+        for (const [key, conn] of this.connections) {
+            conn.close();
+            this.connectionStatus.set(key, false);
         }
+        this.connections.clear();
     }
 
     /**
      * Thực thi SQL query và trả về kết quả
      */
-    async executeQuery(sqlQuery: string): Promise<QueryResult> {
-        const conn = await this.ensureConnected();
+    async executeQuery(sqlQuery: string, endpoint?: string, database?: string): Promise<QueryResult> {
+        const conn = await this.ensureConnected(endpoint, database);
         const startTime = Date.now();
 
         return new Promise((resolve, reject) => {
@@ -123,7 +152,10 @@ export class FabricClient {
 
             const request = new Request(sqlQuery, (err, rowCount) => {
                 if (err) {
-                    this.isConnected = false;
+                    // Mark connection as dead
+                    const resolved = this.resolveConnection(endpoint, database);
+                    const key = this.makeKey(resolved.endpoint, resolved.database);
+                    this.connectionStatus.set(key, false);
                     reject(err);
                 } else {
                     resolve({
@@ -157,7 +189,7 @@ export class FabricClient {
     /**
      * Liệt kê tất cả tables và views
      */
-    async getTables(): Promise<TableInfo[]> {
+    async getTables(endpoint?: string, database?: string): Promise<TableInfo[]> {
         const query = `
       SELECT 
         TABLE_SCHEMA as [schema],
@@ -167,7 +199,7 @@ export class FabricClient {
       ORDER BY TABLE_SCHEMA, TABLE_NAME
     `;
 
-        const result = await this.executeQuery(query);
+        const result = await this.executeQuery(query, endpoint, database);
         return result.rows.map((row: any) => ({
             schema: row.schema,
             name: row.name,
@@ -181,7 +213,9 @@ export class FabricClient {
      */
     async getTableSchema(
         tableName: string,
-        schemaName: string = "dbo"
+        schemaName: string = "dbo",
+        endpoint?: string,
+        database?: string
     ): Promise<ColumnInfo[]> {
         const safeTable = this.sanitizeIdentifier(tableName);
         const safeSchema = this.sanitizeIdentifier(schemaName);
@@ -200,7 +234,7 @@ export class FabricClient {
       ORDER BY ORDINAL_POSITION
     `;
 
-        const result = await this.executeQuery(query);
+        const result = await this.executeQuery(query, endpoint, database);
         return result.rows.map((row: any) => ({
             name: row.name,
             dataType: row.dataType,
@@ -218,12 +252,14 @@ export class FabricClient {
     async previewTable(
         tableName: string,
         schemaName: string = "dbo",
-        limit: number = 10
+        limit: number = 10,
+        endpoint?: string,
+        database?: string
     ): Promise<QueryResult> {
         const safeTable = this.sanitizeIdentifier(tableName);
         const safeSchema = this.sanitizeIdentifier(schemaName);
         const query = `SELECT TOP (${limit}) * FROM [${safeSchema}].[${safeTable}]`;
-        return this.executeQuery(query);
+        return this.executeQuery(query, endpoint, database);
     }
 
     /**
@@ -231,12 +267,14 @@ export class FabricClient {
      */
     async getRowCount(
         tableName: string,
-        schemaName: string = "dbo"
+        schemaName: string = "dbo",
+        endpoint?: string,
+        database?: string
     ): Promise<number> {
         const safeTable = this.sanitizeIdentifier(tableName);
         const safeSchema = this.sanitizeIdentifier(schemaName);
         const query = `SELECT COUNT(*) as [count] FROM [${safeSchema}].[${safeTable}]`;
-        const result = await this.executeQuery(query);
+        const result = await this.executeQuery(query, endpoint, database);
         return (result.rows[0]?.count as number) || 0;
     }
 
@@ -246,7 +284,9 @@ export class FabricClient {
     async getColumnStats(
         tableName: string,
         columnName: string,
-        schemaName: string = "dbo"
+        schemaName: string = "dbo",
+        endpoint?: string,
+        database?: string
     ): Promise<Record<string, unknown>> {
         const safeTable = this.sanitizeIdentifier(tableName);
         const safeSchema = this.sanitizeIdentifier(schemaName);
@@ -262,14 +302,14 @@ export class FabricClient {
       FROM [${safeSchema}].[${safeTable}]
     `;
 
-        const result = await this.executeQuery(query);
+        const result = await this.executeQuery(query, endpoint, database);
         return result.rows[0] || {};
     }
 
     /**
      * Tìm kiếm tables theo tên
      */
-    async searchTables(pattern: string): Promise<TableInfo[]> {
+    async searchTables(pattern: string, endpoint?: string, database?: string): Promise<TableInfo[]> {
         const safePattern = pattern.replace(/'/g, "''");
         const query = `
       SELECT 
@@ -281,7 +321,7 @@ export class FabricClient {
       ORDER BY TABLE_SCHEMA, TABLE_NAME
     `;
 
-        const result = await this.executeQuery(query);
+        const result = await this.executeQuery(query, endpoint, database);
         return result.rows.map((row: any) => ({
             schema: row.schema,
             name: row.name,
@@ -302,9 +342,9 @@ export class FabricClient {
      */
     getConnectionInfo(): Record<string, string> {
         return {
-            endpoint: this.config.sqlEndpoint,
-            database: this.config.database,
-            status: this.isConnected ? "connected" : "disconnected",
+            endpoint: this.config.sqlEndpoint || "not configured",
+            database: this.config.database || "not configured",
+            activeConnections: String(this.connections.size),
         };
     }
 }

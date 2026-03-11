@@ -4,8 +4,8 @@
 
 /** Cấu hình kết nối Fabric Lakehouse */
 export interface FabricConfig {
-    sqlEndpoint: string;
-    database: string;
+    sqlEndpoint?: string;
+    database?: string;
     tenantId: string;
     clientId: string;
     clientSecret: string;
