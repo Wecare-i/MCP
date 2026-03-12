@@ -1,60 +1,120 @@
-# Dataverse MCP Server
+# @wcg-hieule/dataverse-mcp
 
-> Custom MCP Server kết nối Microsoft Dataverse cho Antigravity IDE.
+> **MCP Server for Microsoft Dataverse** — Give your AI agent full CRUD access to Dataverse tables, FetchXML queries, schema exploration, and data quality analysis.
+
+[![npm version](https://img.shields.io/npm/v/@wcg-hieule/dataverse-mcp.svg)](https://www.npmjs.com/package/@wcg-hieule/dataverse-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@wcg-hieule/dataverse-mcp.svg)](https://www.npmjs.com/package/@wcg-hieule/dataverse-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+
+---
 
 ## Quick Start
 
 ```bash
-npm install
-npm run build
+npx -y @wcg-hieule/dataverse-mcp
 ```
 
-## Cấu hình
-
-Thêm vào `mcp_config.json`:
+Add to your `mcp_config.json`:
 
 ```json
 {
-  "dataverse": {
-    "command": "node",
-    "args": ["D:/_Antigravity/MCP/dataverse-mcp/build/index.js"],
-    "env": {
-      "DATAVERSE_URL": "https://yourorg.crm5.dynamics.com",
-      "DATAVERSE_TENANT_ID": "your-tenant-id",
-      "DATAVERSE_CLIENT_ID": "your-client-id",
-      "DATAVERSE_CLIENT_SECRET": "your-client-secret"
+  "mcpServers": {
+    "dataverse": {
+      "command": "npx",
+      "args": ["-y", "@wcg-hieule/dataverse-mcp"],
+      "env": {
+        "DATAVERSE_URL": "https://yourorg.crm5.dynamics.com",
+        "DATAVERSE_TENANT_ID": "your-tenant-id",
+        "DATAVERSE_CLIENT_ID": "your-client-id",
+        "DATAVERSE_CLIENT_SECRET": "your-client-secret"
+      }
     }
   }
 }
 ```
 
+---
+
+## Authentication
+
+Uses **OAuth 2.0 Client Credentials** via `@azure/msal-node`.
+
+**Prerequisites:**
+1. Create an **App Registration** in Azure AD
+2. Grant it **Application User** access in Dataverse with appropriate security role
+3. Copy Tenant ID, Client ID, and generate a Client Secret
+
+---
+
+## Environment Variables
+
+| Variable | Required | Description |
+|----------|:--------:|-------------|
+| `DATAVERSE_URL` | ✅ | Your Dataverse org URL (e.g. `https://org.crm5.dynamics.com`) |
+| `DATAVERSE_TENANT_ID` | ✅ | Azure AD Tenant ID |
+| `DATAVERSE_CLIENT_ID` | ✅ | App Registration Client ID |
+| `DATAVERSE_CLIENT_SECRET` | ✅ | App Registration Client Secret |
+
+---
+
 ## Tools (17)
 
-| Tool | Mô tả |
-|------|--------|
-| `list_entities` | Liệt kê tất cả tables |
-| `get_entity_metadata` | Schema chi tiết 1 table |
-| `get_entity_attributes` | Danh sách columns của table |
-| `query_records` | Truy vấn OData ($filter, $select, $top, $orderby, $expand) |
-| `create_record` | Tạo bản ghi mới |
-| `update_record` | Cập nhật bản ghi |
-| `delete_record` | ⚠️ Xóa bản ghi (không thể hoàn tác) |
-| `get_record_by_id` | Lấy 1 record theo GUID |
-| `execute_fetchxml` | Truy vấn FetchXML (aggregation, linked entities) |
-| `get_relationships` | Lấy relationships (1:N, N:1, N:N) |
-| `get_optionset` | Lấy Choice/OptionSet values |
-| `check_dependencies` | Kiểm tra dependencies trước khi xóa |
-| `delete_table` | ⚠️ Xóa custom table (auto-resolve dependencies) |
-| `delete_attribute` | ⚠️ Xóa column (auto-resolve dependencies) |
-| `analyze_table_quality` | Phân tích chất lượng dữ liệu (null rate, suspect columns) |
-| `execute_action` | Gọi Dataverse Actions (Bound/Unbound) |
-| `publish_customizations` | Publish tất cả customizations |
+### 📋 Schema & Discovery
 
-## Auth
+| Tool | Description |
+|------|-------------|
+| `list_entities` | List all tables in Dataverse |
+| `get_entity_metadata` | Get detailed schema of a table |
+| `get_entity_attributes` | List all columns of a table |
+| `get_relationships` | Explore relationships (1:N, N:1, N:N) |
+| `get_optionset` | Get Choice/OptionSet values |
 
-OAuth 2.0 Client Credentials qua `@azure/msal-node`. Cần App Registration trên Azure AD + Application User trong Dataverse.
+### 🔍 Querying
 
-## Security
+| Tool | Description |
+|------|-------------|
+| `query_records` | OData query with `$filter`, `$select`, `$top`, `$orderby`, `$expand` |
+| `get_record_by_id` | Fetch a single record by GUID |
+| `execute_fetchxml` | FetchXML queries — aggregation, linked entities, groupby |
 
-- `delete_record` bị **loại bỏ** có chủ đích
-- `.env` đã gitignored
+### ✏️ CRUD Operations
+
+| Tool | Description |
+|------|-------------|
+| `create_record` | Create a new record |
+| `update_record` | Update an existing record |
+| `delete_record` | ⚠️ Delete a record (irreversible) |
+
+### 🛠️ Administration
+
+| Tool | Description |
+|------|-------------|
+| `check_dependencies` | Check dependencies before deleting |
+| `delete_table` | ⚠️ Delete a custom table (auto-resolves dependencies) |
+| `delete_attribute` | ⚠️ Delete a column (auto-resolves dependencies) |
+| `publish_customizations` | Publish all pending customizations |
+
+### 📊 Analysis
+
+| Tool | Description |
+|------|-------------|
+| `analyze_table_quality` | Data quality analysis (null rate, suspect columns) |
+| `execute_action` | Call Dataverse Actions (Bound or Unbound) |
+
+---
+
+## Compatibility
+
+Works with any MCP-compatible AI client:
+
+- ✅ Gemini CLI / Antigravity IDE
+- ✅ Claude Desktop
+- ✅ VS Code Copilot
+- ✅ Cursor
+
+---
+
+## License
+
+MIT © [wcg-hieule](https://www.npmjs.com/~wcg-hieule)

@@ -1,6 +1,6 @@
 {
   "name": "@wcg-hieule/dataverse-mcp",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Custom MCP Server kết nối Microsoft Dataverse cho Antigravity IDE",
   "type": "module",
   "main": "build/index.js",

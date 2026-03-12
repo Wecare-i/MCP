@@ -1,10 +1,24 @@
 # @wcg-hieule/bigquery-mcp
 
-> BigQuery MCP Server — Query và phân tích dữ liệu Google BigQuery trực tiếp từ AI agent.
+> **MCP Server for Google BigQuery** — Query, analyze, and forecast data in BigQuery directly from your AI agent.
+
+[![npm version](https://img.shields.io/npm/v/@wcg-hieule/bigquery-mcp.svg)](https://www.npmjs.com/package/@wcg-hieule/bigquery-mcp)
+[![npm downloads](https://img.shields.io/npm/dm/@wcg-hieule/bigquery-mcp.svg)](https://www.npmjs.com/package/@wcg-hieule/bigquery-mcp)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](https://nodejs.org)
+
+---
 
 ## Quick Start
 
-Thêm vào `mcp_config.json`:
+```bash
+# 1. Authenticate with GCP
+gcloud auth application-default login
+
+# 2. Add to mcp_config.json and run via npx
+```
+
+Add to your `mcp_config.json`:
 
 ```json
 {
@@ -21,38 +35,72 @@ Thêm vào `mcp_config.json`:
 }
 ```
 
+---
+
 ## Authentication
 
-```bash
-# Option A — Application Default Credentials (khuyến nghị)
-gcloud auth application-default login
+Supports two methods:
 
-# Option B — Service Account
-# Set env: GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\key.json
+**Option A — Application Default Credentials (recommended)**
+```bash
+gcloud auth application-default login
 ```
 
-## Tools
+**Option B — Service Account Key**
+```json
+{
+  "env": {
+    "GOOGLE_APPLICATION_CREDENTIALS": "C:/path/to/service-account-key.json"
+  }
+}
+```
 
-| Tool | Description |
-|------|-------------|
-| `execute_sql` | Chạy SQL query |
-| `list_dataset_ids` | Liệt kê tất cả datasets |
-| `list_table_ids` | Liệt kê tables trong dataset |
-| `get_dataset_info` | Metadata của dataset |
-| `get_table_info` | Schema + metadata của table |
-| `search_catalog` | Tìm table/dataset theo keyword |
-| `ask_data_insights` | Phân tích dữ liệu theo câu hỏi |
-| `forecast` | Dự báo time series (ARIMA_PLUS) |
-| `analyze_contribution` | Key driver / contribution analysis |
+---
 
 ## Environment Variables
 
 | Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
+|----------|:--------:|---------|-------------|
 | `BIGQUERY_PROJECT` | ✅ | — | GCP Project ID |
-| `BIGQUERY_LOCATION` | ❌ | `US` | BigQuery location |
-| `GOOGLE_APPLICATION_CREDENTIALS` | ❌ | ADC | Service account key path |
+| `BIGQUERY_LOCATION` | ❌ | `US` | BigQuery dataset location |
+| `GOOGLE_APPLICATION_CREDENTIALS` | ❌ | ADC | Path to service account key file |
+
+---
+
+## Tools (9)
+
+### 🔍 Exploration
+
+| Tool | Description |
+|------|-------------|
+| `list_dataset_ids` | List all datasets in the project |
+| `list_table_ids` | List tables in a specific dataset |
+| `get_dataset_info` | Get metadata of a dataset |
+| `get_table_info` | Get schema + metadata of a table |
+| `search_catalog` | Search tables/datasets/views by keyword |
+
+### ⚡ Query & Analysis
+
+| Tool | Description |
+|------|-------------|
+| `execute_sql` | Run a SQL query and return results |
+| `ask_data_insights` | Ask a natural language question → get SQL + insights |
+| `forecast` | Time series forecasting using BigQuery ML ARIMA_PLUS |
+| `analyze_contribution` | Key driver / contribution analysis across dimensions |
+
+---
+
+## Compatibility
+
+Works with any MCP-compatible AI client:
+
+- ✅ Gemini CLI / Antigravity IDE
+- ✅ Claude Desktop
+- ✅ VS Code Copilot
+- ✅ Cursor
+
+---
 
 ## License
 
-MIT
+MIT © [wcg-hieule](https://www.npmjs.com/~wcg-hieule)
