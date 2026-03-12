@@ -1,60 +1,116 @@
-# GitHub MCP — Hướng Dẫn Cài Đặt
+# GitHub MCP Server
 
-> Tương tác với GitHub repositories: tạo issues, PRs, push files, search code trực tiếp từ Antigravity.
+> Forked from [github/github-mcp-server](https://github.com/github/github-mcp-server) — sử dụng qua `npx`, không build từ source.
 
-## Yêu Cầu
+## Quick Start
 
-- ✅ Tài khoản GitHub
-- ✅ Node.js 18+
-- ✅ GitHub Personal Access Token (PAT)
-
-## Cài Đặt
-
-### Bước 1 — Tạo Personal Access Token
-
-1. Vào [github.com/settings/tokens](https://github.com/settings/tokens)
-2. **Generate new token (classic)**
-3. Chọn scopes:
-   - `repo` — Full control of private repositories
-   - `read:org` — Đọc thông tin organization
-   - `workflow` — Nếu cần trigger GitHub Actions
-4. Copy token
-
-### Bước 2 — Cấu hình mcp_config.json
-
-```json
-"github": {
-  "command": "npx",
-  "args": ["-y", "@modelcontextprotocol/server-github"],
-  "env": {
-    "GITHUB_PERSONAL_ACCESS_TOKEN": "<YOUR_PAT_HERE>"
+```jsonc
+// ~/.gemini/antigravity/mcp_config.json
+{
+  "github": {
+    "command": "npx",
+    "args": [
+      "-y",
+      "@modelcontextprotocol/server-github",
+      "--",
+      "--toolsets",
+      "repos,issues,pull_requests,orgs,actions,code_security,secret_protection"
+    ],
+    "env": {
+      "GITHUB_PERSONAL_ACCESS_TOKEN": "<your-pat>"
+    }
   }
 }
 ```
 
-### Bước 3 — Verify
+## Tools Reference
 
-Restart MCP → Test bằng lệnh: `list_commits` hoặc `search_repositories`.
+### 📁 Repos (17 tools)
 
-## Tools Có Sẵn
+| Tool | Mô tả | Read/Write |
+|------|--------|------------|
+| `SearchRepositories` | Tìm repositories | Read |
+| `GetFileContents` | Đọc file trong repo | Read |
+| `ListCommits` | List commits | Read |
+| `SearchCode` | Tìm code across repos | Read |
+| `GetCommit` | Chi tiết 1 commit | Read |
+| `ListBranches` | List branches | Read |
+| `ListTags` | List tags | Read |
+| `GetTag` | Chi tiết 1 tag | Read |
+| `ListReleases` | List releases | Read |
+| `GetLatestRelease` | Release mới nhất | Read |
+| `GetReleaseByTag` | Release theo tag | Read |
+| `CreateOrUpdateFile` | Tạo/sửa file trên remote | Write |
+| `CreateRepository` | Tạo repository mới | Write |
+| `ForkRepository` | Fork repository | Write |
+| `CreateBranch` | Tạo branch mới | Write |
+| `PushFiles` | Push nhiều files | Write |
+| `DeleteFile` | Xóa file | Write |
 
-| Category | Tool | Mô tả |
-|----------|------|--------|
-| **Repo** | `create_repository` | Tạo repo mới |
-| **Repo** | `fork_repository` | Fork repo |
-| **File** | `get_file_contents` | Đọc file/folder |
-| **File** | `create_or_update_file` | Tạo/cập nhật file |
-| **File** | `push_files` | Push nhiều files cùng lúc |
-| **Branch** | `create_branch` | Tạo branch mới |
-| **Issue** | `create_issue` / `list_issues` | Quản lý issues |
-| **PR** | `create_pull_request` / `merge_pull_request` | Quản lý PRs |
-| **Search** | `search_repositories` / `search_code` | Tìm kiếm |
+### 🐛 Issues (7 tools)
 
-## Organizations Đang Dùng
+| Tool | Mô tả | Read/Write |
+|------|--------|------------|
+| `IssueRead` | Đọc chi tiết issue | Read |
+| `SearchIssues` | Tìm issues | Read |
+| `ListIssues` | List issues theo repo | Read |
+| `ListIssueTypes` | List issue types | Read |
+| `IssueWrite` | Tạo/sửa issue | Write |
+| `AddIssueComment` | Comment vào issue | Write |
+| `SubIssueWrite` | Tạo sub-issue | Write |
 
-- **Wecare-i** — Tổ chức chính cho các dự án Wecare
+### 🔀 Pull Requests (10 tools)
 
-## Resources
+| Tool | Mô tả | Read/Write |
+|------|--------|------------|
+| `PullRequestRead` | Đọc chi tiết PR | Read |
+| `ListPullRequests` | List PRs | Read |
+| `SearchPullRequests` | Tìm PRs | Read |
+| `MergePullRequest` | Merge PR | Write |
+| `UpdatePullRequestBranch` | Update branch của PR | Write |
+| `CreatePullRequest` | Tạo PR mới | Write |
+| `UpdatePullRequest` | Sửa PR | Write |
+| `PullRequestReviewWrite` | Submit review | Write |
+| `AddCommentToPendingReview` | Comment trong pending review | Write |
+| `AddReplyToPullRequestComment` | Reply comment trên PR | Write |
 
-- [GitHub MCP Server](https://github.com/modelcontextprotocol/servers/tree/main/src/github)
-- [Tạo GitHub PAT](https://github.com/settings/tokens)
+### 🏢 Orgs (1 tool)
+
+| Tool | Mô tả | Read/Write |
+|------|--------|------------|
+| `SearchOrgs` | Tìm organizations | Read |
+
+### ⚡ Actions (4 tools)
+
+| Tool | Mô tả | Read/Write |
+|------|--------|------------|
+| `ActionsList` | List workflow runs | Read |
+| `ActionsGet` | Chi tiết workflow run | Read |
+| `ActionsRunTrigger` | Trigger workflow manually | Write |
+| `ActionsGetJobLogs` | Đọc job logs | Read |
+
+### 🛡️ Code Security (2 tools)
+
+| Tool | Mô tả | Read/Write |
+|------|--------|------------|
+| `GetCodeScanningAlert` | Chi tiết code scanning alert | Read |
+| `ListCodeScanningAlerts` | List code scanning alerts | Read |
+
+### 🔐 Secret Protection (2 tools)
+
+| Tool | Mô tả | Read/Write |
+|------|--------|------------|
+| `GetSecretScanningAlert` | Chi tiết secret alert | Read |
+| `ListSecretScanningAlerts` | List secret scanning alerts | Read |
+
+## Disabled Toolsets
+
+Các toolsets sau đã tắt để giảm noise:
+
+`context` · `users` · `copilot` · `git` · `stargazers` · `labels` · `projects` · `gists` · `notifications` · `discussions` · `security_advisories` · `dependabot`
+
+Bật lại bằng cách thêm vào `--toolsets`: ví dụ `repos,issues,...,notifications`
+
+## License
+
+MIT — see [LICENSE](./LICENSE)

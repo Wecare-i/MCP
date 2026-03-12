@@ -28,7 +28,7 @@ Thêm vào `mcp_config.json`:
 }
 ```
 
-## Tools (11)
+## Tools (17)
 
 | Tool | Mô tả |
 |------|--------|
@@ -38,11 +38,17 @@ Thêm vào `mcp_config.json`:
 | `query_records` | Truy vấn OData ($filter, $select, $top, $orderby, $expand) |
 | `create_record` | Tạo bản ghi mới |
 | `update_record` | Cập nhật bản ghi |
+| `delete_record` | ⚠️ Xóa bản ghi (không thể hoàn tác) |
 | `get_record_by_id` | Lấy 1 record theo GUID |
-| `execute_fetchxml` | Truy vấn FetchXML |
+| `execute_fetchxml` | Truy vấn FetchXML (aggregation, linked entities) |
 | `get_relationships` | Lấy relationships (1:N, N:1, N:N) |
 | `get_optionset` | Lấy Choice/OptionSet values |
-| `delete_table` | ⚠️ Xóa custom table (kiểm tra dependencies trước) |
+| `check_dependencies` | Kiểm tra dependencies trước khi xóa |
+| `delete_table` | ⚠️ Xóa custom table (auto-resolve dependencies) |
+| `delete_attribute` | ⚠️ Xóa column (auto-resolve dependencies) |
+| `analyze_table_quality` | Phân tích chất lượng dữ liệu (null rate, suspect columns) |
+| `execute_action` | Gọi Dataverse Actions (Bound/Unbound) |
+| `publish_customizations` | Publish tất cả customizations |
 
 ## Auth
 

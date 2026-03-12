@@ -1,93 +1,100 @@
-# NotebookLM MCP — Hướng Dẫn Cài Đặt
+# NotebookLM MCP Server (TypeScript)
 
-> RAG engine cho research & documentation — Query kiến thức từ Google NotebookLM notebooks.
+A TypeScript implementation of the NotebookLM MCP (Model Context Protocol) server, providing AI agents with full access to Google NotebookLM features.
 
-## Yêu Cầu
+## Features
 
-- ✅ Tài khoản Google (Gmail)
-- ✅ Node.js 18+
-- ✅ Chrome/Chromium browser (MCP tự động mở để login)
+- **32 tools** covering all NotebookLM operations
+- **Stdio transport** for direct integration with AI tools (Claude, Gemini, Cursor, Antigravity)
+- **Cookie-based authentication** — shared with Python CLI (`nlm login`)
+- **Single-file bundle** — 74KB, fast startup
 
-## Cài Đặt
+## Quick Start
 
-### Bước 1 — Cấu hình mcp_config.json
+```bash
+# Install dependencies
+npm install
+
+# Build
+npm run build
+
+# Run (stdio transport)
+node dist/index.js
+
+# Show help
+node dist/index.js --help
+```
+
+## Authentication
+
+This server shares auth tokens with the Python NotebookLM CLI. Run `nlm login` first:
+
+```bash
+# Install Python CLI
+pipx install notebooklm-tools
+
+# Login (opens Chrome for cookie extraction)
+nlm login
+```
+
+Or set cookies manually via environment variable:
+
+```bash
+NOTEBOOKLM_COOKIES="SID=xxx; HSID=xxx; ..." node dist/index.js
+```
+
+## MCP Configuration
+
+Add to your MCP settings (e.g., `mcp_config.json`):
 
 ```json
-"notebooklm": {
-  "command": "npx",
-  "args": ["notebooklm-mcp@latest"]
+{
+  "mcpServers": {
+    "notebooklm": {
+      "command": "npx",
+      "args": ["-y", "@wcg-hieule/notebooklm-mcp"]
+    }
+  }
 }
 ```
 
-### Bước 2 — Xác thực Google Account
+## Tools
 
-Sau khi thêm config, restart MCP rồi chạy:
+| Category | Tools | Count |
+|----------|-------|-------|
+| Notebooks | `notebook_list`, `notebook_get`, `notebook_describe`, `notebook_create`, `notebook_rename`, `notebook_delete` | 6 |
+| Sources | `source_add`, `source_list_drive`, `source_sync_drive`, `source_rename`, `source_delete`, `source_describe`, `source_get_content` | 7 |
+| Querying | `notebook_query`, `chat_configure` | 2 |
+| Studio | `studio_create`, `studio_status`, `studio_delete`, `studio_revise` | 4 |
+| Downloads | `download_artifact` | 1 |
+| Exports | `export_artifact` | 1 |
+| Research | `research_start`, `research_status`, `research_import` | 3 |
+| Notes | `note` | 1 |
+| Sharing | `notebook_share_status`, `notebook_share_public`, `notebook_share_invite`, `notebook_share_batch` | 4 |
+| Auth | `refresh_auth`, `save_auth_tokens` | 2 |
+| Server | `server_info` | 1 |
+| **Total** | | **32** |
 
-```
-setup_auth
-```
+## Environment Variables
 
-> Browser sẽ mở → Đăng nhập Google → Hoàn tất. Session được lưu tự động.
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NOTEBOOKLM_COOKIES` | Cookie header string | (from auth cache) |
+| `NOTEBOOKLM_CSRF_TOKEN` | CSRF token | (auto-extracted) |
+| `NOTEBOOKLM_SESSION_ID` | Session ID | (auto-extracted) |
+| `NOTEBOOKLM_HL` | Language code | `en` |
+| `NOTEBOOKLM_QUERY_TIMEOUT` | Query timeout (seconds) | `120` |
+| `NOTEBOOKLM_MCP_TRANSPORT` | Transport type | `stdio` |
+| `NOTEBOOKLM_MCP_PORT` | HTTP/SSE port | `3000` |
+| `NOTEBOOKLM_MCP_HOST` | HTTP/SSE host | `0.0.0.0` |
+| `NOTEBOOKLM_MCP_DEBUG` | Enable debug logging | `false` |
 
-### Bước 3 — Kiểm tra kết nối
+## Limitations
 
-```
-get_health
-```
+- **File upload**: Not yet supported (use Python CLI `nlm source add --file`)
+- **Download**: Not yet supported (use Python CLI `nlm download`)
+- **HTTP/SSE transport**: Not yet implemented (only stdio)
 
-Kết quả mong đợi: `authenticated: true`
+## License
 
-### Bước 4 — Thêm Notebook đầu tiên
-
-1. Vào [notebooklm.google.com](https://notebooklm.google.com)
-2. Tạo hoặc mở notebook
-3. **Share** → **"Anyone with the link"** → Copy link
-4. Dùng lệnh: `add_notebook(url, name, description, topics)`
-
-## Xử Lý Sự Cố
-
-| Vấn đề | Giải pháp |
-|--------|-----------|
-| Auth expired | Chạy `re_auth` |
-| Rate limit (50 queries/ngày) | Chạy `re_auth` để đổi account |
-| Browser conflict | Đóng Chrome → `cleanup_data` → `setup_auth` lại |
-
-## Library & Data
-
-Library lưu tại:
-```
-%LOCALAPPDATA%\notebooklm-mcp\Data\library.json
-```
-
-## Tools Có Sẵn
-
-| Tool | Mô tả |
-|------|--------|
-| `setup_auth` | Đăng nhập Google lần đầu |
-| `re_auth` | Đổi tài khoản / refresh |
-| `get_health` | Kiểm tra trạng thái |
-| `ask_question` | Hỏi notebook đang active |
-| `list_notebooks` | Liệt kê notebooks trong library |
-| `add_notebook` | Thêm notebook mới |
-| `select_notebook` | Chọn notebook active |
-| `search_notebooks` | Tìm kiếm trong library |
-
-## Giới Hạn (Free Account)
-
-| Giới hạn | Số lượng |
-|----------|---------|
-| Notebooks tối đa | 100 |
-| Sources/notebook | 50 |
-| Words/notebook | 500,000 |
-| **Queries/ngày** | **50** |
-
-## Notebooks Đang Dùng
-
-| Name | Topics |
-|------|--------|
-| Layout Patterns & Wecare Design | Layout Patterns, Tailwind CSS, Wecare Brand |
-
-## Resources
-
-- [NotebookLM](https://notebooklm.google.com)
-- [notebooklm-mcp NPM](https://www.npmjs.com/package/notebooklm-mcp)
+MIT

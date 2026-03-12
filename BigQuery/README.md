@@ -1,67 +1,58 @@
-# BigQuery MCP — Hướng Dẫn Cài Đặt
+# @wcg-hieule/bigquery-mcp
 
-> Query và phân tích dữ liệu Google BigQuery trực tiếp từ Antigravity.
+> BigQuery MCP Server — Query và phân tích dữ liệu Google BigQuery trực tiếp từ AI agent.
 
-## Yêu Cầu
+## Quick Start
 
-- ✅ Google Cloud Project có BigQuery enabled
-- ✅ Node.js 18+
-- ✅ Service Account **hoặc** Application Default Credentials (ADC)
-
-## Cài Đặt
-
-### Bước 1 — Cấu hình Authentication
-
-**Option A — Application Default Credentials (khuyến nghị cho local dev):**
-```bash
-gcloud auth application-default login
-```
-
-**Option B — Service Account Key:**
-1. Vào [GCP Console → IAM → Service Accounts](https://console.cloud.google.com/iam-admin/serviceaccounts)
-2. Tạo Service Account → Grant role **BigQuery Data Viewer** + **BigQuery Job User**
-3. Tạo JSON key → Download
-4. Set env var: `GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\key.json`
-
-### Bước 2 — Cấu hình mcp_config.json
+Thêm vào `mcp_config.json`:
 
 ```json
-"bigquery": {
-  "command": "npx",
-  "args": ["-y", "@toolbox-sdk/server@latest", "--prebuilt", "bigquery", "--stdio"],
-  "env": {
-    "BIGQUERY_PROJECT": "project-2025-449801",
-    "BIGQUERY_LOCATION": "asia-southeast1"
+{
+  "mcpServers": {
+    "bigquery": {
+      "command": "npx",
+      "args": ["-y", "@wcg-hieule/bigquery-mcp"],
+      "env": {
+        "BIGQUERY_PROJECT": "your-gcp-project-id",
+        "BIGQUERY_LOCATION": "asia-southeast1"
+      }
+    }
   }
 }
 ```
 
-### Bước 3 — Verify
+## Authentication
 
-Restart MCP → Test: `list_dataset_ids` để xem danh sách datasets.
+```bash
+# Option A — Application Default Credentials (khuyến nghị)
+gcloud auth application-default login
 
-## Project Hiện Tại
+# Option B — Service Account
+# Set env: GOOGLE_APPLICATION_CREDENTIALS=C:\path\to\key.json
+```
 
-| Key | Value |
-|-----|-------|
-| Project ID | `project-2025-449801` |
-| Location | `asia-southeast1` (Singapore) |
+## Tools
 
-## Tools Có Sẵn
-
-| Tool | Mô tả |
-|------|--------|
+| Tool | Description |
+|------|-------------|
 | `execute_sql` | Chạy SQL query |
-| `list_dataset_ids` | Liệt kê datasets |
-| `list_table_ids` | Liệt kê tables |
-| `get_table_info` | Lấy schema table |
-| `search_catalog` | Tìm tables, views, models |
-| `ask_data_insights` | Phân tích AI |
-| `forecast` | Dự báo time series |
-| `analyze_contribution` | Phân tích metric contribution |
+| `list_dataset_ids` | Liệt kê tất cả datasets |
+| `list_table_ids` | Liệt kê tables trong dataset |
+| `get_dataset_info` | Metadata của dataset |
+| `get_table_info` | Schema + metadata của table |
+| `search_catalog` | Tìm table/dataset theo keyword |
+| `ask_data_insights` | Phân tích dữ liệu theo câu hỏi |
+| `forecast` | Dự báo time series (ARIMA_PLUS) |
+| `analyze_contribution` | Key driver / contribution analysis |
 
-## Resources
+## Environment Variables
 
-- [BigQuery Toolbox SDK](https://github.com/googleapis/mcp-toolbox-for-databases)
-- [BigQuery Console](https://console.cloud.google.com/bigquery)
-- [gcloud CLI](https://cloud.google.com/sdk/docs/install)
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `BIGQUERY_PROJECT` | ✅ | — | GCP Project ID |
+| `BIGQUERY_LOCATION` | ❌ | `US` | BigQuery location |
+| `GOOGLE_APPLICATION_CREDENTIALS` | ❌ | ADC | Service account key path |
+
+## License
+
+MIT
