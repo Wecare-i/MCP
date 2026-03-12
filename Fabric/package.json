@@ -1,6 +1,6 @@
 {
   "name": "@wcg-hieule/fabric-mcp",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MCP server for Microsoft Fabric Lakehouse - query, explore and analyze data",
   "type": "module",
   "main": "dist/index.js",
