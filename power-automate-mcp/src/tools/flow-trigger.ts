@@ -32,23 +32,30 @@ export async function handler(args: Record<string, unknown>, client: FlowClient)
   );
 
   const triggers = flow.properties?.definitionSummary?.triggers || [];
-  const trigger = triggers.find((t) =>
+
+  // Find the first triggerable trigger (Request/HTTP type = manually triggerable)
+  const triggerEntry = triggers.find((t) =>
     t.type === "Request" || t.swaggerOperationId?.toLowerCase().includes("manual")
   ) || triggers[0];
 
-  if (!trigger) {
+  if (!triggerEntry) {
     return {
       content: [{ type: "text" as const, text: "❌ No triggerable trigger found on this flow." }],
       isError: true,
     };
   }
 
+  // Use the actual trigger name from the API (not hardcoded "manual")
+  // definitionSummary.triggers contains items with their name
+  // Power Automate trigger run API uses the trigger name from the definition
+  const triggerName = (triggerEntry as { name?: string }).name || "manual";
+
   await client.post(
-    `/providers/Microsoft.ProcessSimple/environments/${environmentId}/flows/${flowId}/triggers/manual/run?api-version=2016-11-01`,
+    `/providers/Microsoft.ProcessSimple/environments/${environmentId}/flows/${flowId}/triggers/${triggerName}/run?api-version=2016-11-01`,
     body
   );
 
   return {
-    content: [{ type: "text" as const, text: `✅ Flow "${flowId}" triggered successfully. Check flow_get_runs to monitor execution.` }],
+    content: [{ type: "text" as const, text: `✅ Flow "${flowId}" triggered via trigger "${triggerName}". Use flow_get_runs to monitor execution.` }],
   };
 }

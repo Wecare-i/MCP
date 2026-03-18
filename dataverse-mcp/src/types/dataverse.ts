@@ -40,12 +40,9 @@ export interface AttributeMetadata {
     RequiredLevel: {
         Value: string;
     };
-    MaxLength?: number;
-    MinValue?: number;
-    MaxValue?: number;
-    Precision?: number;
     IsPrimaryId?: boolean;
     IsPrimaryName?: boolean;
+    IsCustomAttribute?: boolean;
     IsValidForCreate?: boolean;
     IsValidForUpdate?: boolean;
     IsValidForRead?: boolean;

@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -7,17 +6,14 @@ import {
   ListToolsRequestSchema,
 } from "@modelcontextprotocol/sdk/types.js";
 
-import { PowerPlatformClient } from "./client.js";
-import * as envList from "./tools/env-list.js";
-import * as envGet from "./tools/env-get.js";
-import * as envCreate from "./tools/env-create.js";
-import * as envListSolutions from "./tools/env-list-solutions.js";
-import * as envGetCapacity from "./tools/env-get-capacity.js";
-import * as envGetUsers from "./tools/env-get-users.js";
-import * as tenantSettings from "./tools/tenant-settings.js";
-import * as tenantSettingsUpdate from "./tools/tenant-settings-update.js";
-import * as serviceHealthStatus from "./tools/service-health.js";
-import * as policyList from "./tools/policy-list.js";
+import { AzureCostClient } from "./client.js";
+import * as costGetCurrent from "./tools/cost-get-current.js";
+import * as costGetByService from "./tools/cost-get-by-service.js";
+import * as costGetByResource from "./tools/cost-get-by-resource.js";
+import * as budgetList from "./tools/budget-list.js";
+import * as budgetGetAlert from "./tools/budget-get-alert.js";
+import * as invoiceList from "./tools/invoice-list.js";
+import * as costForecast from "./tools/cost-forecast.js";
 
 // ─── Config ────────────────────────────────────────────────────────────────
 
@@ -25,42 +21,43 @@ function getConfig() {
   const tenantId = process.env.AZURE_TENANT_ID;
   const clientId = process.env.AZURE_CLIENT_ID;
   const clientSecret = process.env.AZURE_CLIENT_SECRET;
+  const subscriptionId = process.env.AZURE_SUBSCRIPTION_ID;
 
-  if (!tenantId || !clientId || !clientSecret) {
+  if (!tenantId || !clientId || !clientSecret || !subscriptionId) {
     console.error("❌ Missing required environment variables:");
-    console.error("   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET");
+    console.error("   AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, AZURE_SUBSCRIPTION_ID");
     process.exit(1);
   }
-  return { tenantId, clientId, clientSecret };
+  return { tenantId, clientId, clientSecret, subscriptionId };
 }
 
 // ─── Tool Registry ─────────────────────────────────────────────────────────
 
 type ToolModule = {
   definition: { name: string; description: string; inputSchema: object };
-  handler: (args: Record<string, unknown>, client: PowerPlatformClient) => Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }>;
+  handler: (
+    args: Record<string, unknown>,
+    client: AzureCostClient
+  ) => Promise<{ content: { type: "text"; text: string }[]; isError?: boolean }>;
 };
 
 const tools: ToolModule[] = [
-  envList,
-  envGet,
-  envCreate,
-  envListSolutions,
-  envGetCapacity,
-  envGetUsers,
-  tenantSettings,
-  tenantSettingsUpdate,
-  serviceHealthStatus,
-  policyList,
+  costGetCurrent,
+  costGetByService,
+  costGetByResource,
+  budgetList,
+  budgetGetAlert,
+  invoiceList,
+  costForecast,
 ];
 
 // ─── Server ────────────────────────────────────────────────────────────────
 
 const config = getConfig();
-const client = new PowerPlatformClient(config);
+const client = new AzureCostClient(config);
 
 const server = new Server(
-  { name: "powerplatform-admin", version: "1.1.0" },
+  { name: "azure-cost", version: "1.0.0" },
   { capabilities: { tools: {} } }
 );
 
@@ -97,7 +94,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error("🚀 Power Platform Admin MCP started");
+  console.error("🚀 Azure Cost MCP started");
 }
 
 main().catch((e) => {

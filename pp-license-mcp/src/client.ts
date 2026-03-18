@@ -1,11 +1,10 @@
 /**
- * PowerPlatformClient — HTTP client for Power Platform Admin APIs
+ * LicenseClient — HTTP client for Microsoft Graph + Power Platform Admin APIs
  * Auth: Azure Service Principal → OAuth2 Client Credentials
  *
  * APIs used:
- *   - https://api.powerplatform.com  (Admin)
- *   - https://api.bap.microsoft.com  (Business Application Platform — environments)
- *   - https://graph.microsoft.com    (Microsoft 365 — Service Health, etc.)
+ *   - https://graph.microsoft.com    (Microsoft 365 Licenses, Users)
+ *   - https://api.powerplatform.com  (Power Platform capacity)
  */
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -23,7 +22,6 @@ interface TokenCache {
   scope: string;
 }
 
-/** Parse error body — try JSON first, fallback text */
 async function parseErrorBody(res: Response): Promise<string> {
   const text = await res.text();
   try {
@@ -36,7 +34,6 @@ async function parseErrorBody(res: Response): Promise<string> {
   }
 }
 
-/** Fetch with AbortController timeout */
 async function fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -52,7 +49,6 @@ async function fetchWithTimeout(url: string, options: RequestInit): Promise<Resp
   }
 }
 
-/** Retry với exponential backoff cho 429/503 */
 async function fetchWithRetry(url: string, options: RequestInit, attempt = 0): Promise<Response> {
   const res = await fetchWithTimeout(url, options);
 
@@ -66,7 +62,7 @@ async function fetchWithRetry(url: string, options: RequestInit, attempt = 0): P
   return res;
 }
 
-export class PowerPlatformClient {
+export class LicenseClient {
   private config: Config;
   private tokenCache = new Map<string, TokenCache>();
 
@@ -128,41 +124,7 @@ export class PowerPlatformClient {
     return res.json() as Promise<T>;
   }
 
-  async post<T>(baseUrl: string, path: string, body: unknown, scope: string): Promise<T> {
-    const res = await fetchWithRetry(`${baseUrl}${path}`, {
-      method: "POST",
-      headers: await this.headers(scope),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`POST ${path} failed (${res.status}): ${await parseErrorBody(res)}`);
-    if (res.status === 202 || res.headers.get("content-length") === "0") return {} as T;
-    const text = await res.text();
-    return (text ? JSON.parse(text) : {}) as T;
-  }
-
-  async patch<T>(baseUrl: string, path: string, body: unknown, scope: string): Promise<T> {
-    const res = await fetchWithRetry(`${baseUrl}${path}`, {
-      method: "PATCH",
-      headers: await this.headers(scope),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`PATCH ${path} failed (${res.status}): ${await parseErrorBody(res)}`);
-    const text = await res.text();
-    return (text ? JSON.parse(text) : {}) as T;
-  }
-
-  async delete(baseUrl: string, path: string, scope: string): Promise<void> {
-    const res = await fetchWithRetry(`${baseUrl}${path}`, {
-      method: "DELETE",
-      headers: await this.headers(scope),
-    });
-    if (!res.ok) throw new Error(`DELETE ${path} failed (${res.status}): ${await parseErrorBody(res)}`);
-  }
-
-  /**
-   * Paginate through all pages following `nextLink`.
-   * Returns flat array of all items from `value` field.
-   */
+  /** Paginate through all pages following @odata.nextLink */
   async getAll<T>(baseUrl: string, path: string, scope: string): Promise<T[]> {
     const results: T[] = [];
     let nextUrl: string | null = `${baseUrl}${path}`;
@@ -170,25 +132,21 @@ export class PowerPlatformClient {
     while (nextUrl) {
       const isAbsolute = nextUrl.startsWith("http");
       const url = isAbsolute ? nextUrl : `${baseUrl}${nextUrl}`;
-      const headers = await this.headers(scope);
-      const res = await fetchWithRetry(url, { headers });
+      const res = await fetchWithRetry(url, { headers: await this.headers(scope) });
       if (!res.ok) throw new Error(`GET ${url} failed (${res.status}): ${await parseErrorBody(res)}`);
-      const data = (await res.json()) as { value?: T[]; "@odata.nextLink"?: string; nextLink?: string };
+      const data = (await res.json()) as { value?: T[]; "@odata.nextLink"?: string };
       results.push(...(data.value ?? []));
-      nextUrl = data["@odata.nextLink"] ?? data.nextLink ?? null;
+      nextUrl = data["@odata.nextLink"] ?? null;
     }
 
     return results;
   }
 
-  // ─── Convenience scopes ────────────────────────────────────────────────
+  // ─── Scopes & Base URLs ────────────────────────────────────────────────
 
-  static SCOPE_ADMIN = "https://service.powerapps.com/.default";
-  static SCOPE_FLOW = "https://service.flow.microsoft.com/.default";
   static SCOPE_GRAPH = "https://graph.microsoft.com/.default";
+  static SCOPE_ADMIN = "https://service.powerapps.com/.default";
 
-  static BASE_ADMIN = "https://api.powerplatform.com";
-  static BASE_BAP = "https://api.bap.microsoft.com";
   static BASE_GRAPH = "https://graph.microsoft.com";
+  static BASE_ADMIN = "https://api.powerplatform.com";
 }
-

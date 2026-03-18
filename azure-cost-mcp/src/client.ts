@@ -1,11 +1,9 @@
 /**
- * PowerPlatformClient — HTTP client for Power Platform Admin APIs
+ * AzureCostClient — HTTP client for Azure Cost Management + Billing REST APIs
  * Auth: Azure Service Principal → OAuth2 Client Credentials
  *
  * APIs used:
- *   - https://api.powerplatform.com  (Admin)
- *   - https://api.bap.microsoft.com  (Business Application Platform — environments)
- *   - https://graph.microsoft.com    (Microsoft 365 — Service Health, etc.)
+ *   - https://management.azure.com  (Cost Management, Consumption, Billing)
  */
 
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -15,12 +13,12 @@ interface Config {
   tenantId: string;
   clientId: string;
   clientSecret: string;
+  subscriptionId: string;
 }
 
 interface TokenCache {
   token: string;
   expiresAt: number;
-  scope: string;
 }
 
 /** Parse error body — try JSON first, fallback text */
@@ -66,20 +64,23 @@ async function fetchWithRetry(url: string, options: RequestInit, attempt = 0): P
   return res;
 }
 
-export class PowerPlatformClient {
+export class AzureCostClient {
   private config: Config;
-  private tokenCache = new Map<string, TokenCache>();
+  private tokenCache: TokenCache | null = null;
 
   constructor(config: Config) {
     this.config = config;
   }
 
+  get subscriptionId(): string {
+    return this.config.subscriptionId;
+  }
+
   // ─── Auth ──────────────────────────────────────────────────────────────
 
-  async getToken(scope: string): Promise<string> {
-    const cached = this.tokenCache.get(scope);
-    if (cached && cached.expiresAt > Date.now() + 60_000) {
-      return cached.token;
+  async getToken(): Promise<string> {
+    if (this.tokenCache && this.tokenCache.expiresAt > Date.now() + 60_000) {
+      return this.tokenCache.token;
     }
 
     const url = `https://login.microsoftonline.com/${this.config.tenantId}/oauth2/v2.0/token`;
@@ -87,7 +88,7 @@ export class PowerPlatformClient {
       grant_type: "client_credentials",
       client_id: this.config.clientId,
       client_secret: this.config.clientSecret,
-      scope,
+      scope: AzureCostClient.SCOPE,
     });
 
     const res = await fetchWithTimeout(url, {
@@ -102,93 +103,60 @@ export class PowerPlatformClient {
     }
 
     const data = (await res.json()) as { access_token: string; expires_in: number };
-    this.tokenCache.set(scope, {
+    this.tokenCache = {
       token: data.access_token,
       expiresAt: Date.now() + data.expires_in * 1000,
-      scope,
-    });
+    };
 
     return data.access_token;
   }
 
-  private async headers(scope: string): Promise<Record<string, string>> {
+  private async headers(): Promise<Record<string, string>> {
     return {
-      Authorization: `Bearer ${await this.getToken(scope)}`,
+      Authorization: `Bearer ${await this.getToken()}`,
       "Content-Type": "application/json",
     };
   }
 
   // ─── HTTP Methods ──────────────────────────────────────────────────────
 
-  async get<T>(baseUrl: string, path: string, scope: string): Promise<T> {
-    const res = await fetchWithRetry(`${baseUrl}${path}`, {
-      headers: await this.headers(scope),
-    });
+  async get<T>(path: string): Promise<T> {
+    const url = `${AzureCostClient.BASE}${path}`;
+    const res = await fetchWithRetry(url, { headers: await this.headers() });
     if (!res.ok) throw new Error(`GET ${path} failed (${res.status}): ${await parseErrorBody(res)}`);
     return res.json() as Promise<T>;
   }
 
-  async post<T>(baseUrl: string, path: string, body: unknown, scope: string): Promise<T> {
-    const res = await fetchWithRetry(`${baseUrl}${path}`, {
+  async post<T>(path: string, body: unknown): Promise<T> {
+    const url = `${AzureCostClient.BASE}${path}`;
+    const res = await fetchWithRetry(url, {
       method: "POST",
-      headers: await this.headers(scope),
+      headers: await this.headers(),
       body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`POST ${path} failed (${res.status}): ${await parseErrorBody(res)}`);
-    if (res.status === 202 || res.headers.get("content-length") === "0") return {} as T;
     const text = await res.text();
     return (text ? JSON.parse(text) : {}) as T;
   }
 
-  async patch<T>(baseUrl: string, path: string, body: unknown, scope: string): Promise<T> {
-    const res = await fetchWithRetry(`${baseUrl}${path}`, {
-      method: "PATCH",
-      headers: await this.headers(scope),
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) throw new Error(`PATCH ${path} failed (${res.status}): ${await parseErrorBody(res)}`);
-    const text = await res.text();
-    return (text ? JSON.parse(text) : {}) as T;
-  }
-
-  async delete(baseUrl: string, path: string, scope: string): Promise<void> {
-    const res = await fetchWithRetry(`${baseUrl}${path}`, {
-      method: "DELETE",
-      headers: await this.headers(scope),
-    });
-    if (!res.ok) throw new Error(`DELETE ${path} failed (${res.status}): ${await parseErrorBody(res)}`);
-  }
-
-  /**
-   * Paginate through all pages following `nextLink`.
-   * Returns flat array of all items from `value` field.
-   */
-  async getAll<T>(baseUrl: string, path: string, scope: string): Promise<T[]> {
+  /** Paginate through nextLink automatically */
+  async getAll<T>(path: string): Promise<T[]> {
     const results: T[] = [];
-    let nextUrl: string | null = `${baseUrl}${path}`;
+    let nextUrl: string | null = `${AzureCostClient.BASE}${path}`;
 
     while (nextUrl) {
-      const isAbsolute = nextUrl.startsWith("http");
-      const url = isAbsolute ? nextUrl : `${baseUrl}${nextUrl}`;
-      const headers = await this.headers(scope);
-      const res = await fetchWithRetry(url, { headers });
-      if (!res.ok) throw new Error(`GET ${url} failed (${res.status}): ${await parseErrorBody(res)}`);
-      const data = (await res.json()) as { value?: T[]; "@odata.nextLink"?: string; nextLink?: string };
+      const res = await fetchWithRetry(nextUrl, { headers: await this.headers() });
+      if (!res.ok) throw new Error(`GET ${nextUrl} failed (${res.status}): ${await parseErrorBody(res)}`);
+      const data = (await res.json()) as { value?: T[]; nextLink?: string };
       results.push(...(data.value ?? []));
-      nextUrl = data["@odata.nextLink"] ?? data.nextLink ?? null;
+      nextUrl = data.nextLink ?? null;
     }
 
     return results;
   }
 
-  // ─── Convenience scopes ────────────────────────────────────────────────
+  // ─── Scopes & Base URLs ────────────────────────────────────────────────
 
-  static SCOPE_ADMIN = "https://service.powerapps.com/.default";
-  static SCOPE_FLOW = "https://service.flow.microsoft.com/.default";
-  static SCOPE_GRAPH = "https://graph.microsoft.com/.default";
-
-  static BASE_ADMIN = "https://api.powerplatform.com";
-  static BASE_BAP = "https://api.bap.microsoft.com";
-  static BASE_GRAPH = "https://graph.microsoft.com";
+  static SCOPE = "https://management.azure.com/.default";
+  static BASE = "https://management.azure.com";
 }
-

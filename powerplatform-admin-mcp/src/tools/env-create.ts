@@ -1,4 +1,4 @@
-import type { PowerPlatformClient } from "../client.js";
+import { PowerPlatformClient } from "../client.js";
 
 export const definition = {
   name: "env_create",
@@ -55,7 +55,6 @@ export async function handler(
     properties: {
       displayName,
       environmentSku,
-      databaseType: "CommonDataService",
       currency: { code: currency },
       language: { name: language },
     },

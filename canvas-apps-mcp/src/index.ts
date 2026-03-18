@@ -14,6 +14,11 @@ import * as appListByEnv from "./tools/app-list-by-env.js";
 import * as appGetConnections from "./tools/app-get-connections.js";
 import * as appPublish from "./tools/app-publish.js";
 import * as appPermissions from "./tools/app-permissions.js";
+import * as appShare from "./tools/app-share.js";
+import * as appDelete from "./tools/app-delete.js";
+import * as appGetVersions from "./tools/app-get-versions.js";
+import * as connectorList from "./tools/connector-list.js";
+import * as connectorGet from "./tools/connector-get.js";
 
 function getConfig() {
   const tenantId = process.env.AZURE_TENANT_ID;
@@ -33,13 +38,14 @@ type ToolModule = {
 
 const tools: ToolModule[] = [
   appList, appGet, appListByEnv, appGetConnections, appPublish, appPermissions,
+  appShare, appDelete, appGetVersions, connectorList, connectorGet,
 ];
 
 const config = getConfig();
 const client = new CanvasAppsClient(config);
 
 const server = new Server(
-  { name: "canvas-apps", version: "1.0.0" },
+  { name: "canvas-apps", version: "1.1.0" },
   { capabilities: { tools: {} } }
 );
 

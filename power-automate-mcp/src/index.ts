@@ -15,6 +15,9 @@ import * as flowGetRuns from "./tools/flow-get-runs.js";
 import * as flowGetRunDetail from "./tools/flow-get-run-detail.js";
 import * as flowEnable from "./tools/flow-enable.js";
 import * as flowDisable from "./tools/flow-disable.js";
+import * as flowCancelRun from "./tools/flow-cancel-run.js";
+import * as flowGetActions from "./tools/flow-get-actions.js";
+import * as connectionList from "./tools/connection-list.js";
 
 function getConfig() {
   const tenantId = process.env.AZURE_TENANT_ID;
@@ -34,13 +37,14 @@ type ToolModule = {
 
 const tools: ToolModule[] = [
   flowList, flowGet, flowTrigger, flowGetRuns, flowGetRunDetail, flowEnable, flowDisable,
+  flowCancelRun, flowGetActions, connectionList,
 ];
 
 const config = getConfig();
 const client = new FlowClient(config);
 
 const server = new Server(
-  { name: "power-automate", version: "1.0.0" },
+  { name: "power-automate", version: "1.1.0" },
   { capabilities: { tools: {} } }
 );
 
