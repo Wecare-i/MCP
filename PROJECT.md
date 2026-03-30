@@ -2,7 +2,7 @@
 
 > Monorepo quản lý tất cả MCP (Model Context Protocol) servers phục vụ hệ sinh thái AI-assisted development của Wecare.
 
-**Last Updated**: 2026-03-14
+**Last Updated**: 2026-03-30
 
 ---
 
@@ -21,25 +21,32 @@
 
 ### 🏠 Self-hosted (build local)
 
-| MCP | Package | Version | npm Status | Tools |
-|-----|---------|---------|------------|:-----:|
-| **Dataverse** | `@wcg-hieule/dataverse-mcp` | `1.1.1` | ✅ Published | 17 |
-| **Fabric** | `@wcg-hieule/fabric-mcp` | — | ⏸️ Chưa publish | 25+ |
-| **PP Admin** | `@wcg-hieule/powerplatform-admin-mcp` | `1.0.0` | ⏸️ Chưa publish | 10 |
-| **Canvas Apps** | `@wcg-hieule/canvas-apps-mcp` | `1.0.0` | ⏸️ Chưa publish | 6 |
-| **Power Automate** | `@wcg-hieule/power-automate-mcp` | `1.0.0` | ⏸️ Chưa publish | 7 |
-| **Azure Cost** | `@wcg-hieule/azure-cost-mcp` | `1.0.0` | ⏸️ Chưa publish | 7 |
-| **PP License** | `@wcg-hieule/pp-license-mcp` | `1.0.0` | ⏸️ Chưa publish | 6 |
+| MCP | Local Path | Tools | Active |
+|-----|-----------|:-----:|:------:|
+| **Dataverse** | `dataverse-mcp/build/index.js` | 17 | ✅ |
+| **Fabric** | `Fabric/dist/index.js` | 44 | ⏸️ |
+| **PP Admin** | `powerplatform-admin-mcp/dist/index.js` | 10 | ⏸️ |
+| **Azure Cost** | `azure-cost-mcp/dist/index.js` | 7 | ⏸️ |
+| **PP License** | `pp-license-mcp/dist/index.js` | 6 | ⏸️ |
+| **NotebookLM** | `notebooklm/dist/index.js` | 14 | ⏸️ |
+| **BigQuery** | `BigQuery/dist/index.js` | 9 | ⏸️ |
+| **Cloud Run** | `gg-Cloud-run/mcp-server.js` | 8 | ⏸️ |
+
+> ⚠️ **Tool limit**: Antigravity giới hạn **100 tools active**. Bật tất cả sẽ vượt (~120+). Chỉ bật MCP cần thiết theo task.
+
+### 🔁 Converted to Skill (không dùng MCP nữa)
+
+| MCP cũ | Skill thay thế | Lý do |
+|--------|---------------|-------|
+| `canvas-apps-mcp/` | `canvas-apps` skill | Dùng CLI/API trực tiếp |
+| `power-automate-mcp/` | `power-automate` skill | Dùng CLI/API trực tiếp |
 
 ### 🌐 External (chỉ cần config)
 
 | MCP | Cách kết nối | Mô tả | Status |
 |-----|-------------|--------|--------|
 | **Stitch** | HTTPS (`stitch.googleapis.com`) | Generate UI screens từ text prompt | ✅ Active |
-| **NotebookLM** | `npx @wcg-hieule/notebooklm-mcp` | RAG engine — query từ Google NotebookLM | ✅ Active |
 | **GitHub** | `npx @modelcontextprotocol/server-github` | Repos, PRs, push files | ✅ Active |
-| **BigQuery** | `npx @wcg-hieule/bigquery-mcp` | Query & phân tích dữ liệu GCP | ✅ Active |
-| **CloudRun** | `npx @wcg-hieule/cloudrun-mcp` | Deploy services lên Google Cloud Run | ✅ Active |
 | **Figma** | `npx figma-developer-mcp` | Inspect design files (cần Figma Desktop) | ⏸️ Chưa configure |
 
 ---
@@ -118,7 +125,8 @@ npm run build       # tsup → dist/index.js
 - [x] Delete table/attribute với dependency resolution tự động
 - [x] Publish customizations
 - [x] Data quality analysis (null rate)
-- [x] Execute Dataverse Actions (Bound/Unbound)
+- [x] **Create attribute/column** — String, Integer, Decimal, Money, Boolean, DateTime, Lookup, Picklist *(mới 2026-03-30)*
+- [-] ~~Execute Dataverse Actions~~ — đã bỏ (ít dùng, tiết kiệm slot)
 
 ### Fabric MCP (`Fabric/`)
 - [x] Lakehouse SQL queries (tedious driver)
@@ -207,10 +215,11 @@ Tất cả **Power Platform MCPs** (Admin, Canvas, Automate, Dataverse, License)
 ## Known Issues
 
 - **Figma MCP** chưa configure — cần Figma Desktop App
-- `gg-Cloud-run/` là repo clone từ Google, không maintain
-- 3 MCPs mới (PP Admin, Canvas, Automate) dùng local `dist/` chưa publish lên npm
+- `gg-Cloud-run/` là repo clone từ Google, không maintain — chỉ dùng plain JS
 - PP Admin, Canvas, Automate cần verify Service Principal có đủ quyền trong PPAC
 - **Quyết định loại bỏ**: Copilot Studio MCP — không build do giới hạn licensing
+- **Tool limit 100**: Bật hết tất cả MCP sẽ vượt ~120 tools. Antigravity chưa support `includeTools`/`excludeTools` per-tool filtering cho HTTP servers.
+- **Fabric 44 tools**: Cần trim xuống ~10 tools hay dùng nhất — chờ review
 
 ---
 
@@ -219,11 +228,9 @@ Tất cả **Power Platform MCPs** (Admin, Canvas, Automate, Dataverse, License)
 - [ ] Assign role `Cost Management Reader` cho Service Principal tại subscription level (Azure Portal)
 - [ ] Verify Graph API permission `Organization.Read.All` / `Directory.Read.All` cho License MCP
 - [ ] Test `azure_cost_get_current` và `pp_license_list` qua Inspector
-- [ ] Publish `powerplatform-admin-mcp` lên npm
-- [ ] Publish `canvas-apps-mcp` lên npm
-- [ ] Publish `power-automate-mcp` lên npm
-- [ ] Publish `fabric-mcp` lên npm
+- [ ] **Trim Fabric MCP** từ 44 → ~10 tools hay dùng nhất (ưu tiên cao — tool budget)
 - [ ] Configure Figma MCP
+- [ ] Request Antigravity team support `includeTools`/`excludeTools` per-tool filtering
 
 ---
 
@@ -237,3 +244,6 @@ Tất cả **Power Platform MCPs** (Admin, Canvas, Automate, Dataverse, License)
 - **Tool-per-file pattern**: Mỗi tool là 1 file riêng — dễ test, dễ maintain
 - **tsup vs tsc**: PP Admin/Canvas/Automate dùng `tsup` (nhanh hơn, ESM clean) — Dataverse giữ `tsc` (ổn định, đã publish)
 - **Không build Copilot Studio MCP**: Licensing limitation — API không public
+- **All local, no npm globals** *(2026-03-30)*: Tất cả MCP chạy từ local source — dễ trim/sửa tools không cần publish npm. Đã uninstall 4 npm global packages (`notebooklm-mcp`, `fabric-mcp`, `bigquery-mcp`, `cloudrun-mcp`).
+- **MCP vs Skill trade-off** *(2026-03-30)*: MCP nhanh hơn (persistent process, cached auth). CLI-based skill chậm hơn ~3-10x do cold start mỗi lần gọi. Ưu tiên MCP cho production workflows.
+- **Skill thay MCP** *(2026-03-30)*: `canvas-apps` và `power-automate` đã convert sang Skill — bỏ MCP tương ứng để tiết kiệm tool slots.

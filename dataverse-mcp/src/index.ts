@@ -10,7 +10,7 @@
  * get_record_by_id, get_relationships, get_optionset,
  * delete_table, delete_attribute, delete_record,
  * publish_customizations, check_dependencies,
- * analyze_table_quality, execute_action.
+ * analyze_table_quality, create_attribute.
  */
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
@@ -44,7 +44,7 @@ import * as deleteRecord from "./tools/delete-record.js";
 import * as publishCustomizations from "./tools/publish-customizations.js";
 import * as checkDependencies from "./tools/check-dependencies.js";
 import * as analyzeTableQuality from "./tools/analyze-null-columns.js";
-import * as executeAction from "./tools/execute-action.js";
+import * as createAttribute from "./tools/create-attribute.js";
 
 // ─── Load Configuration ────────────────────────────────────────────────────
 
@@ -93,7 +93,7 @@ const tools: ToolModule[] = [
     publishCustomizations,
     checkDependencies,
     analyzeTableQuality,
-    executeAction,
+    createAttribute,
 ];
 
 // ─── MCP Server ────────────────────────────────────────────────────────────
