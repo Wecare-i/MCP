@@ -25,5 +25,3 @@ build/
 *.log
 *.tmp
 
-# External repos (not maintained, ignore lock files to avoid Dependabot noise)
-gg-Cloud-run/package-lock.json

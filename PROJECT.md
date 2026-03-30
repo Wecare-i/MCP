@@ -214,12 +214,12 @@ Tất cả **Power Platform MCPs** (Admin, Canvas, Automate, Dataverse, License)
 
 ## Known Issues
 
-- **Figma MCP** chưa configure — cần Figma Desktop App
-- `gg-Cloud-run/` là repo clone từ Google, không maintain — chỉ dùng plain JS
 - PP Admin, Canvas, Automate cần verify Service Principal có đủ quyền trong PPAC
-- **Quyết định loại bỏ**: Copilot Studio MCP — không build do giới hạn licensing
-- **Tool limit 100**: Bật hết tất cả MCP sẽ vượt ~120 tools. Antigravity chưa support `includeTools`/`excludeTools` per-tool filtering cho HTTP servers.
+- **Quyết định loại bỏ**: Copilot Studio MCP (vấn đề build/license), Cloud Run (Google clone, nhiều vulns), Canvas Apps & Power Automate MCP (đã chuyển sang Skill)
+- **Tool limit 100**: Bật hết tất cả MCP sẽ vượt ~120 tools.
 - **Fabric 44 tools**: Cần trim xuống ~10 tools hay dùng nhất — chờ review
+- **React-template**: Tạm giữ, chờ review đóng gói thành skill
+- **Figma MCP** chưa configure — cần Figma Desktop App
 
 ---
 
@@ -244,6 +244,5 @@ Tất cả **Power Platform MCPs** (Admin, Canvas, Automate, Dataverse, License)
 - **Tool-per-file pattern**: Mỗi tool là 1 file riêng — dễ test, dễ maintain
 - **tsup vs tsc**: PP Admin/Canvas/Automate dùng `tsup` (nhanh hơn, ESM clean) — Dataverse giữ `tsc` (ổn định, đã publish)
 - **Không build Copilot Studio MCP**: Licensing limitation — API không public
-- **All local, no npm globals** *(2026-03-30)*: Tất cả MCP chạy từ local source — dễ trim/sửa tools không cần publish npm. Đã uninstall 4 npm global packages (`notebooklm-mcp`, `fabric-mcp`, `bigquery-mcp`, `cloudrun-mcp`).
-- **MCP vs Skill trade-off** *(2026-03-30)*: MCP nhanh hơn (persistent process, cached auth). CLI-based skill chậm hơn ~3-10x do cold start mỗi lần gọi. Ưu tiên MCP cho production workflows.
-- **Skill thay MCP** *(2026-03-30)*: `canvas-apps` và `power-automate` đã convert sang Skill — bỏ MCP tương ứng để tiết kiệm tool slots.
+- **All local, no npm globals** *(2026-03-30)*: Tất cả MCP chạy từ local source
+- **Xóa rác codebase** *(2026-03-30)*: Đã xóa vĩnh viễn `gg-Cloud-run/` (vấn đề security), `canvas-apps-mcp/` & `power-automate-mcp/` (chuyển qua dạng workflow scripts/skills) và các file dữ liệu/shell dư thừa khỏi source code.
