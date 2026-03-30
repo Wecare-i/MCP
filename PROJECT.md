@@ -30,7 +30,7 @@
 | **PP License** | `pp-license-mcp/dist/index.js` | 6 | ⏸️ |
 | **NotebookLM** | `notebooklm/dist/index.js` | 14 | ⏸️ |
 | **BigQuery** | `BigQuery/dist/index.js` | 9 | ⏸️ |
-| **Cloud Run** | `gg-Cloud-run/mcp-server.js` | 8 | ⏸️ |
+| ~~**Cloud Run**~~ | ~~`gg-Cloud-run/mcp-server.js`~~ | ~~8~~ | ❌ Đã bỏ |
 
 > ⚠️ **Tool limit**: Antigravity giới hạn **100 tools active**. Bật tất cả sẽ vượt (~120+). Chỉ bật MCP cần thiết theo task.
 
