@@ -200,10 +200,19 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  server.tool("notebook_get", "Get notebook details with sources", { notebook_id: z.string().describe("Notebook UUID") }, async ({ notebook_id }) => {
+  server.tool("notebook_get", "Get notebook details with sources. Set detailed=true for full source info (type, url, drive_doc_id, can_sync)", {
+    notebook_id: z.string().describe("Notebook UUID"),
+    detailed: z.boolean().optional().default(false).describe("If true, return detailed source info including type, url, drive freshness"),
+  }, async ({ notebook_id, detailed }) => {
     return safe(async () => {
       const client = await getClient();
       const result = await client.callRpc(RPC.GET_NOTEBOOK, [notebook_id, null, [2], null, 0], { path: `/notebook/${notebook_id}` });
+      if (detailed) {
+        const sources = parseSourcesList(result);
+        const nb = parseNotebookDetail(result, notebook_id);
+        if (!nb) return error(`Notebook ${notebook_id} not found`);
+        return success({ notebook: { id: nb.notebook_id, title: nb.title, source_count: sources.length, url: nb.url }, sources });
+      }
       const nb = parseNotebookDetail(result, notebook_id);
       if (!nb) return error(`Notebook ${notebook_id} not found`);
       return success({ notebook: { id: nb.notebook_id, title: nb.title, source_count: nb.source_count, url: nb.url }, sources: nb.sources });
@@ -244,27 +253,8 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  server.tool("notebook_rename", "Rename a notebook", { notebook_id: z.string().describe("Notebook UUID"), new_title: z.string().describe("New title") }, async ({ notebook_id, new_title }) => {
-    return safe(async () => {
-      if (!new_title.trim()) return error("Notebook title cannot be empty.");
-      const client = await getClient();
-      const params = [notebook_id, [[null, null, null, [null, new_title]]]];
-      await client.callRpc(RPC.RENAME_NOTEBOOK, params, { path: `/notebook/${notebook_id}` });
-      return success({ notebook_id, new_title, message: `Renamed notebook to: ${new_title}` });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("notebook_delete", "Delete notebook permanently. IRREVERSIBLE. Requires confirm=true", { notebook_id: z.string().describe("Notebook UUID"), confirm: z.boolean().default(false).describe("Must be true after user approval") }, async ({ notebook_id, confirm }) => {
-    if (!confirm) return { content: [{ type: "text" as const, text: JSON.stringify(error("Deletion not confirmed. You must ask the user to confirm before deleting. Set confirm=true only after user approval.", { warning: "This action is IRREVERSIBLE." })) }] };
-    return safe(async () => {
-      const client = await getClient();
-      await client.callRpc(RPC.DELETE_NOTEBOOK, [[notebook_id], [2]]);
-      return success({ message: `Notebook ${notebook_id} has been permanently deleted.` });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
   // ========================================================================
-  // SOURCES (7 tools)
+  // SOURCES
   // ========================================================================
 
   server.tool("source_add", "Add a source to a notebook. Unified tool for all source types (url, text, drive, file)", {
@@ -339,49 +329,6 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  server.tool("source_list_drive", "List sources with types and Drive freshness status", { notebook_id: z.string().describe("Notebook UUID") }, async ({ notebook_id }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const result = await client.callRpc(RPC.GET_NOTEBOOK, [notebook_id, null, [2], null, 0], { path: `/notebook/${notebook_id}` });
-      const sources = parseSourcesList(result);
-      return success({ notebook_id, sources, count: sources.length });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("source_sync_drive", "Sync Drive sources with latest content. Requires confirm=true", { source_ids: z.array(z.string()).describe("Source UUIDs to sync"), confirm: z.boolean().default(false) }, async ({ source_ids, confirm }) => {
-    if (!confirm) return { content: [{ type: "text" as const, text: JSON.stringify(error("Sync not confirmed. Set confirm=true after user approval.", { hint: "Call source_list_drive first to see which sources are stale." })) }] };
-    return safe(async () => {
-      const client = await getClient();
-      const results: Array<{ id: string; synced: boolean }> = [];
-      for (const sid of source_ids) {
-        const r = await client.callRpc(RPC.SYNC_DRIVE, [null, [sid], [2]]);
-        results.push({ id: sid, synced: r != null });
-      }
-      return success({ synced_count: results.filter(r => r.synced).length, total_count: source_ids.length, results });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("source_rename", "Rename a source in a notebook", { notebook_id: z.string(), source_id: z.string(), new_title: z.string() }, async ({ notebook_id, source_id, new_title }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const result = await client.callRpc(RPC.RENAME_SOURCE, [null, [source_id], [[[new_title]]]], { path: `/notebook/${notebook_id}` });
-      return success({ source_id, new_title, message: `Source renamed to: ${new_title}` });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("source_delete", "Delete source(s) permanently. IRREVERSIBLE. Requires confirm=true", { source_id: z.string().optional(), source_ids: z.array(z.string()).optional(), confirm: z.boolean().default(false) }, async ({ source_id, source_ids, confirm }) => {
-    if (!confirm) return { content: [{ type: "text" as const, text: JSON.stringify(error("Deletion not confirmed. Set confirm=true after user approval.", { warning: "This action is IRREVERSIBLE." })) }] };
-    return safe(async () => {
-      const client = await getClient();
-      if (source_ids && source_ids.length > 0) {
-        await client.callRpc(RPC.DELETE_SOURCE, [source_ids.map(s => [s]), [2]]);
-        return success({ message: `${source_ids.length} sources have been permanently deleted.`, deleted_count: source_ids.length });
-      }
-      if (!source_id) return error("Either source_id or source_ids is required.");
-      await client.callRpc(RPC.DELETE_SOURCE, [[[source_id]], [2]]);
-      return success({ message: `Source ${source_id} has been permanently deleted.` });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
 
   server.tool("source_describe", "Get AI-generated source summary with keyword chips", { source_id: z.string().describe("Source UUID") }, async ({ source_id }) => {
     return safe(async () => {
@@ -451,24 +398,7 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  server.tool("chat_configure", "Set chat goal and response length", {
-    notebook_id: z.string(),
-    goal: z.enum(["default", "custom", "learning_guide"]).default("default"),
-    custom_prompt: z.string().optional(),
-    response_length: z.enum(["default", "longer", "shorter"]).default("default"),
-  }, async ({ notebook_id, goal, custom_prompt, response_length }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const goalCode = CHAT_GOALS.getCode(goal);
-      const lengthCode = CHAT_RESPONSE_LENGTHS.getCode(response_length);
-      if (goal === "custom" && !custom_prompt) return error("custom_prompt is required when goal='custom'");
-      const goalSetting = goal === "custom" && custom_prompt ? [goalCode, custom_prompt] : [goalCode];
-      const chatSettings = [goalSetting, [lengthCode]];
-      const params = [notebook_id, [[null, null, null, null, null, null, null, chatSettings]]];
-      await client.callRpc(RPC.RENAME_NOTEBOOK, params, { path: `/notebook/${notebook_id}` });
-      return success({ notebook_id, goal, custom_prompt: goal === "custom" ? custom_prompt : null, response_length });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
+
 
   // ========================================================================
   // STUDIO CONTENT (4 tools)
@@ -623,69 +553,7 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  server.tool("studio_delete", "Delete studio artifact. IRREVERSIBLE. Requires confirm=true", {
-    notebook_id: z.string(),
-    artifact_id: z.string(),
-    confirm: z.boolean().default(false),
-  }, async ({ notebook_id, artifact_id, confirm }) => {
-    if (!confirm) return { content: [{ type: "text" as const, text: JSON.stringify(error("Deletion not confirmed. Set confirm=true after user approval.", { warning: "This action is IRREVERSIBLE.", hint: "Call studio_status first to list artifacts with their IDs." })) }] };
-    return safe(async () => {
-      const client = await getClient();
-      await client.callRpc(RPC.DELETE_STUDIO, [artifact_id, notebook_id]);
-      return success({ message: `Artifact ${artifact_id} has been permanently deleted.`, notebook_id });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
 
-  server.tool("studio_revise", "Revise individual slides in an existing slide deck. Creates a NEW artifact", {
-    notebook_id: z.string(),
-    artifact_id: z.string(),
-    slide_instructions: z.array(z.object({ slide: z.number(), instruction: z.string() })),
-    confirm: z.boolean().default(false),
-  }, async ({ notebook_id, artifact_id, slide_instructions, confirm }) => {
-    if (!confirm) return { content: [{ type: "text" as const, text: JSON.stringify(pendingConfirmation("Please confirm before revising slide deck:", { notebook_id, artifact_id, slides_to_revise: slide_instructions.map(s => `Slide ${s.slide}: ${s.instruction}`) }, "This creates a NEW slide deck with revisions applied. Set confirm=true after user approves.")) }] };
-    return safe(async () => {
-      const client = await getClient();
-      const revisions = slide_instructions.map(s => [s.slide - 1, s.instruction]); // 0-indexed internally
-      await client.callRpc(RPC.REVISE_SLIDE_DECK, [artifact_id, revisions]);
-      return success({ artifact_type: "slide_deck", notebook_url: `https://notebooklm.google.com/notebook/${notebook_id}`, message: "Slide deck revision started. Poll studio_status to check progress." });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  // ========================================================================
-  // DOWNLOADS (1 tool)
-  // ========================================================================
-
-  server.tool("download_artifact", "Download any artifact type", {
-    notebook_id: z.string(),
-    artifact_id: z.string(),
-    artifact_type: z.enum(["audio", "video", "report", "mind_map", "slide_deck", "infographic", "data_table", "quiz", "flashcards"]),
-    output_path: z.string().optional().describe("Local path to save the file"),
-  }, async ({ notebook_id, artifact_id, artifact_type, output_path }) => {
-    return safe(async () => {
-      return error("Download is not yet supported in TypeScript MCP server. Use the Python CLI: nlm download <type> <notebook_id> <artifact_id>");
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  // ========================================================================
-  // EXPORTS (1 tool)
-  // ========================================================================
-
-  server.tool("export_artifact", "Export artifact to Google Docs/Sheets", {
-    notebook_id: z.string(),
-    artifact_id: z.string(),
-    export_type: z.enum(["docs", "sheets"]).default("docs"),
-  }, async ({ notebook_id, artifact_id, export_type }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const exportCode = EXPORT_TYPES.getCode(export_type);
-      const result = await client.callRpc(RPC.EXPORT_ARTIFACT, [artifact_id, notebook_id, exportCode], { path: `/notebook/${notebook_id}` });
-      let exportUrl = null;
-      if (Array.isArray(result) && (result as unknown[]).length > 0) {
-        exportUrl = (result as unknown[])[0];
-      }
-      return success({ artifact_id, export_type, export_url: exportUrl, message: `Exported to Google ${export_type === "docs" ? "Docs" : "Sheets"}` });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
 
   // ========================================================================
   // RESEARCH (3 tools)
@@ -712,17 +580,28 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  server.tool("research_status", "Poll research progress", {
+  server.tool("research_poll", "Poll research progress or import discovered sources", {
     notebook_id: z.string(),
-    task_id: z.string().optional(),
-    max_wait: z.number().optional().default(0).describe("Max seconds to wait (0 = instant check)"),
-  }, async ({ notebook_id, task_id, max_wait }) => {
+    task_id: z.string(),
+    action: z.enum(["status", "import"]).default("status").describe("status = check progress, import = add sources to notebook"),
+    source_indices: z.array(z.number()).optional().describe("For action=import: indices of sources to import (default: all)"),
+  }, async ({ notebook_id, task_id, action, source_indices }) => {
     return safe(async () => {
       const client = await getClient();
+
+      if (action === "import") {
+        const params = [notebook_id, task_id, source_indices ?? null];
+        const result = await client.callRpc(RPC.IMPORT_RESEARCH, params, { path: `/notebook/${notebook_id}` });
+        let importedCount = 0;
+        if (Array.isArray(result) && (result as unknown[]).length > 0 && Array.isArray((result as unknown[])[0])) {
+          importedCount = ((result as unknown[])[0] as unknown[]).length;
+        }
+        return success({ notebook_id, task_id, imported_count: importedCount, message: `Imported ${importedCount} sources from research.` });
+      }
+
+      // Default: status
       const params = [notebook_id, task_id ?? null];
       const result = await client.callRpc(RPC.POLL_RESEARCH, params, { path: `/notebook/${notebook_id}` });
-      
-      // Parse research results
       const sources: Array<Record<string, unknown>> = [];
       let isComplete = false;
       if (Array.isArray(result)) {
@@ -737,23 +616,6 @@ export function registerAllTools(server: McpServer): void {
         isComplete = r.length > 1 && r[1] === true;
       }
       return success({ notebook_id, task_id, is_complete: isComplete, sources, source_count: sources.length });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("research_import", "Import discovered research sources into notebook", {
-    notebook_id: z.string(),
-    task_id: z.string(),
-    source_indices: z.array(z.number()).optional().describe("Indices of sources to import (default: all)"),
-  }, async ({ notebook_id, task_id, source_indices }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const params = [notebook_id, task_id, source_indices ?? null];
-      const result = await client.callRpc(RPC.IMPORT_RESEARCH, params, { path: `/notebook/${notebook_id}` });
-      let importedCount = 0;
-      if (Array.isArray(result) && (result as unknown[]).length > 0 && Array.isArray((result as unknown[])[0])) {
-        importedCount = ((result as unknown[])[0] as unknown[]).length;
-      }
-      return success({ notebook_id, task_id, imported_count: importedCount, message: `Imported ${importedCount} sources from research.` });
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
@@ -810,75 +672,10 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  // ========================================================================
-  // SHARING (4 tools)
-  // ========================================================================
 
-  server.tool("notebook_share_status", "Get sharing settings", { notebook_id: z.string() }, async ({ notebook_id }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const result = await client.callRpc(RPC.GET_SHARE_STATUS, [notebook_id]) as unknown[];
-      let isPublic = false;
-      let publicUrl: string | null = null;
-      const collaborators: Array<Record<string, unknown>> = [];
-      if (Array.isArray(result)) {
-        if (result.length > 0) isPublic = result[0] === 1;
-        if (result.length > 1 && typeof result[1] === "string") publicUrl = result[1];
-        if (result.length > 2 && Array.isArray(result[2])) {
-          for (const c of result[2] as unknown[]) {
-            if (Array.isArray(c) && c.length >= 2) {
-              collaborators.push({ email: c[0], role: SHARE_ROLES.getName(c[1] as number) });
-            }
-          }
-        }
-      }
-      return success({ notebook_id, is_public: isPublic, public_url: publicUrl, collaborators });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("notebook_share_public", "Enable or disable public link sharing", {
-    notebook_id: z.string(),
-    enable: z.boolean().describe("true to enable, false to disable"),
-  }, async ({ notebook_id, enable }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const params = [notebook_id, enable ? 1 : 0];
-      const result = await client.callRpc(RPC.SHARE_NOTEBOOK, params, { path: `/notebook/${notebook_id}` }) as unknown[];
-      let publicUrl: string | null = null;
-      if (enable && Array.isArray(result) && result.length > 1) publicUrl = result[1] as string;
-      return success({ notebook_id, is_public: enable, public_url: publicUrl, message: enable ? "Public sharing enabled." : "Public sharing disabled." });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("notebook_share_invite", "Invite collaborator by email", {
-    notebook_id: z.string(),
-    email: z.string().describe("Email to invite"),
-    role: z.enum(["editor", "viewer"]).default("viewer"),
-  }, async ({ notebook_id, email, role }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const roleCode = SHARE_ROLES.getCode(role);
-      const params = [notebook_id, null, null, [[email, roleCode]]];
-      await client.callRpc(RPC.SHARE_NOTEBOOK, params, { path: `/notebook/${notebook_id}` });
-      return success({ notebook_id, email, role, message: `Invited ${email} as ${role}.` });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  server.tool("notebook_share_batch", "Invite multiple collaborators at once", {
-    notebook_id: z.string(),
-    invites: z.array(z.object({ email: z.string(), role: z.enum(["editor", "viewer"]) })),
-  }, async ({ notebook_id, invites }) => {
-    return safe(async () => {
-      const client = await getClient();
-      const inviteParams = invites.map(i => [i.email, SHARE_ROLES.getCode(i.role)]);
-      const params = [notebook_id, null, null, inviteParams];
-      await client.callRpc(RPC.SHARE_NOTEBOOK, params, { path: `/notebook/${notebook_id}` });
-      return success({ notebook_id, invited_count: invites.length, message: `Invited ${invites.length} collaborators.` });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
 
   // ========================================================================
-  // AUTH (2 tools)
+  // AUTH
   // ========================================================================
 
   server.tool("refresh_auth", "Reload auth tokens", {}, async () => {
@@ -889,35 +686,4 @@ export function registerAllTools(server: McpServer): void {
     }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
   });
 
-  server.tool("save_auth_tokens", "Save cookies manually (fallback method)", {
-    cookies: z.string().describe("Cookie header string"),
-    csrf_token: z.string().optional(),
-  }, async ({ cookies, csrf_token }) => {
-    return safe(async () => {
-      const parsed: Record<string, string> = {};
-      for (const pair of cookies.split(";")) {
-        const trimmed = pair.trim();
-        const eqIdx = trimmed.indexOf("=");
-        if (eqIdx > 0) parsed[trimmed.slice(0, eqIdx)] = trimmed.slice(eqIdx + 1);
-      }
-      saveTokensToCache({ cookies: parsed, csrfToken: csrf_token ?? "", sessionId: "", buildLabel: "", extractedAt: Date.now() / 1000 });
-      resetClient();
-      return success({ message: "Auth tokens saved. The MCP server will use these on next request." });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
-
-  // ========================================================================
-  // SERVER (1 tool)
-  // ========================================================================
-
-  server.tool("server_info", "Get server version and check for updates", {}, async () => {
-    return safe(async () => {
-      return success({
-        name: "notebooklm-mcp",
-        version: "1.0.0",
-        runtime: "typescript/node",
-        transport: process.env.NOTEBOOKLM_MCP_TRANSPORT ?? "stdio",
-      });
-    }).then(r => ({ content: [{ type: "text" as const, text: JSON.stringify(r) }] }));
-  });
 }
