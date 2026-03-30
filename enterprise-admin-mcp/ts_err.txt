@@ -1,0 +1,13 @@
+src/tools/license/capacity-api-calls.ts(1,36): error TS2307: Cannot find module '../../clients/GraphGraphLicenseClient.js' or its corresponding type declarations.
+src/tools/license/capacity-storage.ts(1,36): error TS2307: Cannot find module '../../clients/GraphGraphLicenseClient.js' or its corresponding type declarations.
+src/tools/license/license-cost-estimate.ts(1,36): error TS2307: Cannot find module '../../clients/GraphGraphLicenseClient.js' or its corresponding type declarations.
+src/tools/license/license-cost-estimate.ts(49,35): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/tools/license/license-get-pp-users.ts(1,36): error TS2307: Cannot find module '../../clients/GraphGraphLicenseClient.js' or its corresponding type declarations.
+src/tools/license/license-get-usage.ts(1,36): error TS2307: Cannot find module '../../clients/GraphGraphLicenseClient.js' or its corresponding type declarations.
+src/tools/license/license-get-usage.ts(38,25): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/tools/license/license-get-usage.ts(41,32): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/tools/license/license-get-usage.ts(82,8): error TS7006: Parameter 'sp' implicitly has an 'any' type.
+src/tools/license/license-list.ts(1,36): error TS2307: Cannot find module '../../clients/GraphGraphLicenseClient.js' or its corresponding type declarations.
+src/tools/license/license-list.ts(55,44): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/tools/license/license-list.ts(56,18): error TS7006: Parameter 'a' implicitly has an 'any' type.
+src/tools/license/license-list.ts(56,21): error TS7006: Parameter 'b' implicitly has an 'any' type.

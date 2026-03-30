@@ -24,9 +24,7 @@
 | MCP | Local Path | Tools | Active |
 |-----|-----------|:-----:|:------:|
 | **Dataverse** | `dataverse-mcp/build/index.js` | 17 | ✅ |
-| **PP Admin** | `powerplatform-admin-mcp/dist/index.js` | 10 | ⏸️ |
-| **Azure Cost** | `azure-cost-mcp/dist/index.js` | 7 | ⏸️ |
-| **PP License** | `pp-license-mcp/dist/index.js` | 6 | ⏸️ |
+| **Enterprise Admin** | `enterprise-admin-mcp/dist/index.js` | 23 | ⏸️ |
 | **NotebookLM** | `notebooklm/dist/index.js` | 14 | ⏸️ |
 | **BigQuery** | `BigQuery/dist/index.js` | 9 | ⏸️ |
 | ~~**Fabric**~~ | `Fabric/dist/index.js` | 44 | ❌ Unconfigured |
@@ -215,7 +213,7 @@ Tất cả **Power Platform MCPs** (Admin, Canvas, Automate, Dataverse, License)
 ## Known Issues
 
 - PP Admin, Canvas, Automate cần verify Service Principal có đủ quyền trong PPAC
-- **Quyết định loại bỏ**: Copilot Studio MCP (vấn đề build/license), Cloud Run (Google clone, nhiều vulns), Canvas Apps & Power Automate MCP (đã chuyển sang Skill)
+- **Quyết định gộp & loại bỏ**: Gộp Azure Cost, PP License, PP Admin thành `enterprise-admin-mcp` (dùng chung Auth). Loại bỏ Cloud Run, Canvas Apps & Power Automate MCP (đã chuyển sang Skill)
 - **Tool limit 100**: Bật hết tất cả MCP sẽ vượt ~120 tools. Fabric (44 tools) đã bị gỡ tạm khỏi `mcp_config.json` để tránh crash limit.
 - **Fabric 44 tools**: Codebase vẫn giữ nguyên, chờ review trim xuống ~10 tools để add lại vào config.
 - **React-template**: Tạm giữ, chờ review đóng gói thành skill
