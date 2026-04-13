@@ -9,7 +9,7 @@ Custom MCP server kết nối Microsoft Dataverse — CRUD, FetchXML, Quality An
 - **MCP SDK**: `@modelcontextprotocol/sdk`
 - **Auth**: MSAL OAuth2 (`@azure/msal-node`)
 - **Transport**: stdio
-- **Package**: `@wecare-team/dataverse-mcp` (published npm)
+- **Package**: `@wcg-hieule/dataverse-mcp` (published npm, v1.2.0)
 - **Loại**: Self-hosted — cần build local
 
 ## Requirements
@@ -23,6 +23,8 @@ Custom MCP server kết nối Microsoft Dataverse — CRUD, FetchXML, Quality An
 - Data quality analysis (null rate, suspect columns)
 - Execute Dataverse Actions (Bound/Unbound)
 - Publish customizations
+- Create custom tables (entities) with primary column
+- Create custom columns (attributes) with multiple types
 
 ### Non-functional
 - Auto-resolve blocking dependencies trước khi delete
@@ -47,7 +49,9 @@ Custom MCP server kết nối Microsoft Dataverse — CRUD, FetchXML, Quality An
 - [x] Publish customizations
 - [x] Data quality analysis (null rate, suspect columns)
 - [x] Execute Dataverse Actions (Bound/Unbound)
-- [x] Published to npm: `@wecare-team/dataverse-mcp`
+- [x] Create custom table (entity) with primary column config
+- [x] Create custom column (attribute) — 9 types supported
+- [x] Published to npm: `@wcg-hieule/dataverse-mcp` v1.2.0
 
 ## Dependencies / Tích hợp
 

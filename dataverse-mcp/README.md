@@ -58,7 +58,7 @@ Uses **OAuth 2.0 Client Credentials** via `@azure/msal-node`.
 
 ---
 
-## Tools (17)
+## Tools (18)
 
 ### 📋 Schema & Discovery
 
@@ -85,6 +85,13 @@ Uses **OAuth 2.0 Client Credentials** via `@azure/msal-node`.
 | `create_record` | Create a new record |
 | `update_record` | Update an existing record |
 | `delete_record` | ⚠️ Delete a record (irreversible) |
+
+### 🏗️ Schema Management
+
+| Tool | Description |
+|------|-------------|
+| `create_table` | Create a custom table (entity) with primary column |
+| `create_attribute` | Create a column (String, Memo, Integer, Decimal, Money, Boolean, DateTime, Lookup, Picklist) |
 
 ### 🛠️ Administration
 

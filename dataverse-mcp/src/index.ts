@@ -45,6 +45,7 @@ import * as publishCustomizations from "./tools/publish-customizations.js";
 import * as checkDependencies from "./tools/check-dependencies.js";
 import * as analyzeTableQuality from "./tools/analyze-null-columns.js";
 import * as createAttribute from "./tools/create-attribute.js";
+import * as createTable from "./tools/create-table.js";
 
 // ─── Load Configuration ────────────────────────────────────────────────────
 
@@ -94,6 +95,7 @@ const tools: ToolModule[] = [
     checkDependencies,
     analyzeTableQuality,
     createAttribute,
+    createTable,
 ];
 
 // ─── MCP Server ────────────────────────────────────────────────────────────
