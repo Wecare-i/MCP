@@ -2,7 +2,7 @@
  * Power BI REST API Client
  *
  * HTTP client cho Power BI REST API (api.powerbi.com/v1.0/myorg).
- * Dùng cho: Semantic Model, Reports & Dashboards.
+ * Dùng cho: Semantic Model, Reports & Dashboards, Dataflow Gen1.
  *
  * Auth: Azure Service Principal → Access Token (scope: analysis.windows.net)
  */

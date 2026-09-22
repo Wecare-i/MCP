@@ -20,6 +20,7 @@ MCP server kết nối AI (Claude, Gemini, VS Code Copilot) với toàn bộ Mic
 - Truy vấn Semantic Models qua Power BI REST API (DAX queries)
 - Khám phá Reports & Dashboards
 - Quản lý và trigger Dataflow Gen2
+- Đọc Dataflow Gen1 (Power BI dataflow): liệt kê, export M code từng query qua Power BI REST API
 - Quản lý và chạy Notebooks trên Spark
 - *(Planned)* Quản lý Data Pipelines
 - *(Planned)* CI/CD Deployment Pipelines
@@ -41,6 +42,7 @@ MCP server kết nối AI (Claude, Gemini, VS Code Copilot) với toàn bộ Mic
 - [x] Semantic Model — list models, get model, execute DAX
 - [x] Reports & Dashboards — list reports/dashboards, get report, get pages, get tiles
 - [x] Dataflow Gen2 — list, get, run (trigger), get status
+- [x] Dataflow Gen1 — list, get definition (model.json + M code từng query)
 - [x] Notebooks & Spark — list, get, run (with parameters), get status
 - [ ] Data Pipeline — list, get, run, get status *(planned)*
 - [ ] CI/CD Deployment — list pipelines, get stages, deploy *(planned)*
@@ -53,7 +55,7 @@ MCP server kết nối AI (Claude, Gemini, VS Code Copilot) với toàn bộ Mic
 |--------|----------|-------|----------|
 | `FabricClient` | SQL Endpoint (tedious) | `database.windows.net` | Lakehouse SQL query |
 | `FabricRestClient` | `api.fabric.microsoft.com/v1` | `api.fabric.microsoft.com` | Workspace, Dataflow, Notebook, Pipeline, CI/CD |
-| `PowerBIClient` | `api.powerbi.com/v1.0/myorg` | `analysis.windows.net` | Semantic Model, Reports, Dashboards |
+| `PowerBIClient` | `api.powerbi.com/v1.0/myorg` | `analysis.windows.net` | Semantic Model, Reports, Dashboards, Dataflow Gen1 |
 
 ### Project Structure
 
@@ -74,6 +76,7 @@ src/
 │   ├── semanticTools.ts      # 3 tools — list models, get, execute DAX
 │   ├── reportTools.ts        # 5 tools — reports + dashboards
 │   ├── dataflowTools.ts      # 4 tools — list, get, run, status
+│   ├── dataflowGen1Tools.ts  # 2 tools — list, get definition (M code)
 │   └── notebookTools.ts      # 4 tools — list, get, run, status
 └── schemas/
     └── *Schemas.ts           # Zod input schemas (1 file per domain)
