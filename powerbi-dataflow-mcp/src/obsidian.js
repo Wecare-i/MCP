@@ -402,9 +402,14 @@ function wikilink(path, alias, inTable = false) {
     return `[[${target}${inTable ? "\\|" : "|"}${label}]]`;
 }
 
-/** @param {string} text */
+/**
+ * Đưa chữ vào một ô của bảng Markdown.
+ * Escape dấu \ trước dấu |, nếu không dấu \ có sẵn trong tên query sẽ nuốt mất dấu \ mình thêm vào.
+ * Xuống dòng đổi thành dấu cách, vì một dòng của bảng Markdown phải nằm gọn trên một dòng.
+ * @param {string} text
+ */
 function cell(text) {
-    return text.replace(/\|/g, "\\|");
+    return text.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
 }
 
 /** @param {string} value */

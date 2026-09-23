@@ -237,3 +237,16 @@ test("workspace không có quyền và dataflow không tồn tại", async () =>
     assert.equal(notFound.isError, true);
     assert.match(notFound.content[0].text, /404/);
 });
+
+test("tên query có dấu \\ và | không làm vỡ bảng Markdown", async () => {
+    const name = "a\\b|c";
+    const document = [`shared #"${name}" = 1;`, ""].join("\r\n");
+    const { mcp, vault } = await setup(fakeClient(makeModel(document, { [name]: { loadEnabled: true } })));
+    const result = await callTool(mcp, ARGS);
+    assert.equal(result.isError, undefined);
+
+    const note = await read(vault, NOTE);
+    const row = note.split("\n").find((line) => line.startsWith("| a"));
+    // Cả dấu \ lẫn dấu | trong tên query đều phải được escape, nếu không dòng bảng sẽ tách sai cột
+    assert.ok(row.startsWith("| a\\\\b\\|c | "));
+});
