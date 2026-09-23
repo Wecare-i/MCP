@@ -14,6 +14,8 @@
 | **CloudRun** | External | Deploy services lên Google Cloud Run | [`cloudrun/`](../cloudrun/) |
 | **Dataverse** | Self-hosted | Kết nối Dataverse / Power Platform | [`dataverse-mcp/`](../dataverse-mcp/) |
 | **Fabric** | Self-hosted | Microsoft Fabric Lakehouse integration | [`Fabric/`](../Fabric/) |
+| **Power BI Dataflow** | Self-hosted | Export M code Dataflow Gen1 ra note Obsidian | [`powerbi-dataflow-mcp/`](../powerbi-dataflow-mcp/) |
+| **Power BI Desktop** | External + skill | Đọc/sửa semantic model và report ở local (PBIP/PBIR) | [`powerbi-desktop/`](../powerbi-desktop/) |
 
 ## Phân Loại
 
@@ -62,6 +64,8 @@ MCP/
 ├── figma/               ← Figma MCP docs
 ├── github/              ← GitHub MCP docs
 ├── notebooklm/          ← NotebookLM MCP docs
+├── powerbi-dataflow-mcp/ ← Power BI Dataflow MCP (self-hosted, không cần build)
+├── powerbi-desktop/     ← MCP + skill + CLI cho Power BI Desktop (docs)
 ├── stitch/              ← Stitch MCP docs
 ├── docs/                ← Tài liệu tổng hợp (file này)
 ├── React-template/      ← Template React project
@@ -79,4 +83,6 @@ MCP/
 | CloudRun | ✅ Active |
 | Dataverse | ✅ Active |
 | Fabric | ✅ Active |
+| Power BI Dataflow | ✅ Active |
+| Power BI Modeling | ✅ Active (`--readonly`) |
 | Figma | ⏸️ Chưa configure |

@@ -1,0 +1,23 @@
+{
+  "name": "powerbi-dataflow-mcp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MCP server export Dataflow Gen1 (Power BI dataflow) theo workspace ID và dataflow ID, đăng nhập bằng tài khoản người dùng",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "powerbi-dataflow-mcp": "src/index.js"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@azure/identity": "^4.13.3",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "zod": "^3.25.0"
+  }
+}
