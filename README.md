@@ -14,7 +14,7 @@
 | **CloudRun** | External | Deploy services lên Google Cloud Run | [`cloudrun/`](../cloudrun/) |
 | **Dataverse** | Self-hosted | Kết nối Dataverse / Power Platform | [`dataverse-mcp/`](../dataverse-mcp/) |
 | **Fabric** | Self-hosted | Microsoft Fabric Lakehouse integration | [`Fabric/`](../Fabric/) |
-| **Power BI Dataflow** | Self-hosted | Export M code Dataflow Gen1 ra note Obsidian | [`powerbi-dataflow-mcp/`](../powerbi-dataflow-mcp/) |
+| **Power BI Dataflow** | Self-hosted | Export M code Dataflow Gen1 ra repo git hoặc note Obsidian | [`powerbi-dataflow-mcp/`](../powerbi-dataflow-mcp/) |
 | **Power BI Desktop** | External + skill | Đọc/sửa semantic model và report ở local (PBIP/PBIR) | [`powerbi-desktop/`](../powerbi-desktop/) |
 
 ## Phân Loại

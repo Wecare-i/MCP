@@ -8,24 +8,37 @@ import { z } from "zod";
 import { PowerBIClient } from "./powerbi.js";
 import { getQueryGroupNames, parseMashupDocument } from "./mashup.js";
 import { DEFAULT_FOLDER, writeDataflowNotes } from "./obsidian.js";
+import { writeRepoFiles } from "./repo.js";
 
 /** Giới hạn ký tự output để không làm tràn context của AI */
 const CHARACTER_LIMIT = 50_000;
 const GUID_PATTERN = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 /**
+ * Hai cách ghi file:
+ * - obsidian: note Markdown trong vault Obsidian, có wikilink và MOC. Cần OBSIDIAN_VAULT_DIR.
+ * - repo: thư mục thường, mỗi query một file .pq kèm README. Cần DATAFLOW_OUTPUT_DIR.
+ *   Dành cho người không dùng Obsidian, và cho repo git của team.
+ *
  * @param {{
  *   client?: Pick<PowerBIClient, "getText" | "getJson">,
  *   vaultDir?: string,
+ *   outputDir?: string,
+ *   format?: "obsidian" | "repo",
  *   folder?: string,
  *   now?: () => Date,
  * }} [options]
  */
-export function createServer({ client, vaultDir, folder, now = () => new Date() } = {}) {
+export function createServer({ client, vaultDir, outputDir, format, folder, now = () => new Date() } = {}) {
     // Tạo client không đăng nhập ngay. Trình duyệt chỉ mở khi tool gọi API lần đầu
     const powerbi = client ?? new PowerBIClient();
     const vault = vaultDir || process.env.OBSIDIAN_VAULT_DIR;
+    const output = outputDir || process.env.DATAFLOW_OUTPUT_DIR;
     const vaultFolder = folder || process.env.OBSIDIAN_DATAFLOW_FOLDER || DEFAULT_FOLDER;
+    // Cấu hình nào có thì dùng cái đó. Có cả hai thì DATAFLOW_FORMAT quyết định, mặc định obsidian
+    const mode = format || process.env.DATAFLOW_FORMAT || (vault ? "obsidian" : "repo");
+    const targetDir = mode === "repo" ? output : vault;
+    const targetEnv = mode === "repo" ? "DATAFLOW_OUTPUT_DIR (thư mục lưu M code)" : "OBSIDIAN_VAULT_DIR (thư mục gốc của vault Obsidian)";
 
     /** @type {Map<string, string>} workspace ID (chữ thường) → tên workspace */
     const workspaceNames = new Map();
@@ -51,8 +64,11 @@ export function createServer({ client, vaultDir, folder, now = () => new Date() 
         "dataflow_gen1_export",
         {
             title: "Export Dataflow Gen1",
-            description: `Export một Dataflow Gen1 (Power BI dataflow) theo workspace ID và dataflow ID vào vault Obsidian, rồi trả về M code của từng query.
-Note được ghi vào <vault>/${vaultFolder}/<tên workspace>/<tên dataflow>.md và được liệt kê trong MOC cùng thư mục. Export lại thì note cũ được cập nhật, mục "## Ghi chú" viết tay được giữ nguyên.
+            description: `Export một Dataflow Gen1 (Power BI dataflow) theo workspace ID và dataflow ID ra file, rồi trả về M code của từng query.
+${mode === "repo"
+    ? `File được ghi vào <thư mục lưu>/<tên workspace>/<tên dataflow>/: mỗi query một file .pq, kèm README.md liệt kê query. README gốc liệt kê mọi dataflow đã export.`
+    : `Note được ghi vào <vault>/${vaultFolder}/<tên workspace>/<tên dataflow>.md và được liệt kê trong MOC cùng thư mục.`}
+Export lại thì file cũ được cập nhật, mục "## Ghi chú" viết tay được giữ nguyên.
 Lần gọi đầu tiên trong phiên sẽ mở trình duyệt tới trang đăng nhập Microsoft. Báo người dùng đăng nhập trước khi gọi.
 Lấy hai ID từ M code của bảng trong semantic model: PowerPlatform.Dataflows(...){[workspaceId="..."]}[Data]{[dataflowId="..."]},
 hoặc từ URL https://app.powerbi.com/groups/<workspace_id>/dataflows/<dataflow_id>.`,
@@ -70,12 +86,12 @@ hoặc từ URL https://app.powerbi.com/groups/<workspace_id>/dataflows/<dataflo
         },
         async ({ workspace_id, dataflow_id, query_name }) => {
             try {
-                // Kiểm cấu hình vault trước khi gọi API, để cấu hình sai thì không bắt người dùng đăng nhập
-                if (!vault) {
-                    return errorResult("Error: Chưa cấu hình OBSIDIAN_VAULT_DIR (thư mục gốc của vault Obsidian) cho powerbi-dataflow-mcp.");
+                // Kiểm cấu hình trước khi gọi API, để cấu hình sai thì không bắt người dùng đăng nhập
+                if (!targetDir) {
+                    return errorResult(`Error: Chưa cấu hình ${targetEnv} cho powerbi-dataflow-mcp.`);
                 }
-                if (!(await isDirectory(vault))) {
-                    return errorResult(`Error: Không thấy thư mục vault "${vault}". Kiểm lại OBSIDIAN_VAULT_DIR.`);
+                if (!(await isDirectory(targetDir))) {
+                    return errorResult(`Error: Không thấy thư mục "${targetDir}". Kiểm lại ${targetEnv}.`);
                 }
 
                 const workspaceId = workspace_id.toLowerCase();
@@ -98,16 +114,10 @@ hoặc từ URL https://app.powerbi.com/groups/<workspace_id>/dataflows/<dataflo
                     };
                 });
 
-                const written = await writeDataflowNotes({
-                    vaultDir: vault,
-                    folder: vaultFolder,
-                    workspaceName,
-                    workspaceId,
-                    dataflowId,
-                    model,
-                    queries,
-                    exportedAt: now(),
-                });
+                const common = { workspaceName, workspaceId, dataflowId, model, queries, exportedAt: now() };
+                const written = mode === "repo"
+                    ? await writeRepoFiles({ outputDir: targetDir, ...common })
+                    : await writeDataflowNotes({ vaultDir: targetDir, folder: vaultFolder, ...common });
 
                 let shown = queries;
                 if (query_name) {
@@ -123,11 +133,22 @@ hoặc từ URL https://app.powerbi.com/groups/<workspace_id>/dataflows/<dataflo
                     dataflow: model.name,
                     dataflowId,
                     modifiedTime: model.modifiedTime,
-                    vault,
-                    note: written.note,
-                    queryNotes: written.queryNotes,
-                    staleQueryNotes: written.staleQueryNotes,
-                    moc: written.moc,
+                    format: mode,
+                    ...(mode === "repo"
+                        ? {
+                            outputDir: targetDir,
+                            note: written.note,
+                            queryFiles: written.queryFiles,
+                            staleQueryFiles: written.staleQueryFiles,
+                            index: written.index,
+                        }
+                        : {
+                            vault: targetDir,
+                            note: written.note,
+                            queryNotes: written.queryNotes,
+                            staleQueryNotes: written.staleQueryNotes,
+                            moc: written.moc,
+                        }),
                     queries: queries.map(({ name, loadEnabled, queryGroup }) => ({ name, loadEnabled, queryGroup })),
                 };
 

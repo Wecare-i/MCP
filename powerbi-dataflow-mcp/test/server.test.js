@@ -222,8 +222,15 @@ test("bắt buộc workspace_id, dataflow_id dạng GUID và cấu hình vault",
     const noVault = await setup(fakeClient(), { vaultDir: join(tmpdir(), "khong-co-vault-nay") });
     const result = await callTool(noVault.mcp, ARGS);
     assert.equal(result.isError, true);
-    assert.match(result.content[0].text, /Không thấy thư mục vault/);
+    assert.match(result.content[0].text, /Không thấy thư mục .*OBSIDIAN_VAULT_DIR/s);
     assert.deepEqual(noVault.client.calls, []);
+
+    // Chế độ repo thiếu thư mục lưu: báo đúng tên biến môi trường của chế độ đó
+    const noOutput = await setup(fakeClient(), { vaultDir: undefined, format: "repo" });
+    const repoResult = await callTool(noOutput.mcp, ARGS);
+    assert.equal(repoResult.isError, true);
+    assert.match(repoResult.content[0].text, /DATAFLOW_OUTPUT_DIR/);
+    assert.deepEqual(noOutput.client.calls, []);
 });
 
 test("workspace không có quyền và dataflow không tồn tại", async () => {
@@ -249,4 +256,64 @@ test("tên query có dấu \\ và | không làm vỡ bảng Markdown", async () 
     const row = note.split("\n").find((line) => line.startsWith("| a"));
     // Cả dấu \ lẫn dấu | trong tên query đều phải được escape, nếu không dòng bảng sẽ tách sai cột
     assert.ok(row.startsWith("| a\\\\b\\|c | "));
+});
+
+const REPO_FOLDER = "Accounting dataflow-PROD/CNKH (_7-2025)";
+
+/** Chế độ repo: vault tạm của setup() không được dùng tới, file phải nằm trong outputDir */
+async function setupRepo() {
+    const outputDir = await mkdtemp(join(tmpdir(), "dataflow-repo-"));
+    const { mcp } = await setup(fakeClient(), { outputDir, format: "repo" });
+    return { mcp, outputDir };
+}
+
+test("chế độ repo ghi file .pq và README, không dùng wikilink", async () => {
+    const { mcp, outputDir } = await setupRepo();
+    const result = await callTool(mcp, ARGS);
+    assert.equal(result.isError, undefined);
+
+    const text = result.content[0].text;
+    const summary = JSON.parse(text.slice(0, text.indexOf("\n\n// =====")));
+    assert.equal(summary.format, "repo");
+    assert.equal(summary.note, `${REPO_FOLDER}/README.md`);
+    assert.deepEqual(summary.queryFiles, [`${REPO_FOLDER}/CNKH (_7-2025).pq`, `${REPO_FOLDER}/Helper.pq`]);
+    assert.equal(summary.index, "README.md");
+    assert.deepEqual(summary.staleQueryFiles, []);
+    assert.equal(summary.vault, undefined);
+
+    const pq = await read(outputDir, summary.queryFiles[1]);
+    assert.ok(pq.startsWith("// powerbi-dataflow-mcp"));
+    assert.ok(pq.includes("// Dataflow: CNKH (<7-2025) · Workspace: Accounting dataflow-PROD · Query: Helper"));
+    assert.ok(pq.trimEnd().endsWith("1"));
+
+    const readme = await read(outputDir, summary.note);
+    assert.ok(!readme.includes("[["), "README chế độ repo không được dùng wikilink");
+    assert.ok(readme.includes("| Workspace | Accounting dataflow-PROD |"));
+    assert.ok(readme.includes("| Export lúc | 2026-09-22T14:05 |"));
+    assert.ok(readme.includes("| Helper |  | Nhóm phụ | [Helper.pq](Helper.pq) |"));
+    assert.ok(readme.endsWith("## Ghi chú\n"));
+
+    const index = await read(outputDir, "README.md");
+    assert.ok(index.includes("## Accounting dataflow-PROD"));
+    assert.ok(index.includes("CNKH%20(_7-2025)/README.md) — export 2026-09-22T14:05"));
+});
+
+test("chế độ repo giữ ghi chú tay và không ghi đè file người dùng tự tạo", async () => {
+    const { mcp, outputDir } = await setupRepo();
+    await callTool(mcp, ARGS);
+
+    const notePath = join(outputDir, `${REPO_FOLDER}/README.md`);
+    const before = await readFile(notePath, "utf8");
+    await writeFile(notePath, `${before.trimEnd()}\n\nCột thanhtien là tiền chưa VAT.\n`, "utf8");
+    await callTool(mcp, ARGS);
+    assert.ok((await readFile(notePath, "utf8")).includes("Cột thanhtien là tiền chưa VAT."));
+
+    // File .pq người dùng tự tạo: tool báo lỗi thay vì ghi đè
+    const own = join(outputDir, `${REPO_FOLDER}/Helper.pq`);
+    const ownCode = "let Source = 1 in Source\n";
+    await writeFile(own, ownCode, "utf8");
+    const result = await callTool(mcp, ARGS);
+    assert.equal(result.isError, true);
+    assert.match(result.content[0].text, /không do powerbi-dataflow-mcp tạo/);
+    assert.equal(await readFile(own, "utf8"), ownCode);
 });

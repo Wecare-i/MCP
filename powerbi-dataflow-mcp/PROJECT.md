@@ -1,6 +1,6 @@
 # Power BI Dataflow MCP Server
 
-Custom MCP server export M code của Dataflow Gen1 (Power BI dataflow) ra note Markdown trong vault Obsidian.
+Custom MCP server export M code của Dataflow Gen1 (Power BI dataflow) ra file: thư mục thường trong repo git, hoặc note Markdown trong vault Obsidian.
 
 **Last Updated**: 2026-09-23
 
@@ -19,13 +19,15 @@ Custom MCP server export M code của Dataflow Gen1 (Power BI dataflow) ra note 
 
 - Export một Dataflow Gen1 theo `workspace_id` + `dataflow_id`
 - Tách M code của từng query trong dataflow
-- Ghi note Markdown vào vault Obsidian, cập nhật MOC
+- Hai chế độ ghi file, chọn bằng `DATAFLOW_FORMAT`:
+  - `repo`: mỗi query một file `.pq` kèm `README.md`, dùng link Markdown thường. Cho người không dùng Obsidian và cho repo git của team
+  - `obsidian`: note Markdown trong vault, có wikilink và MOC
 - Trả M code về cho agent để đọc ngay trong phiên chat
 
 ### Non-functional
 
-- Note ghi theo `99 System/Agent/Quy ước ghi note.md` của vault: YAML ở dòng đầu, có khối `## For future agent`
-- Chỉ ghi đè note do chính tool tạo (`generated_by: powerbi-dataflow-mcp` trong frontmatter)
+- Chế độ `obsidian` ghi theo `99 System/Agent/Quy ước ghi note.md` của vault: YAML ở dòng đầu, có khối `## For future agent`
+- Chỉ ghi đè file do chính tool tạo. Chế độ `obsidian` nhận biết bằng `generated_by` trong frontmatter, chế độ `repo` bằng dòng đầu của file
 - Giữ nguyên phần người dùng viết tay: mục `## Ghi chú` và các key frontmatter thêm vào
 
 ### Constraints
@@ -44,7 +46,9 @@ Custom MCP server export M code của Dataflow Gen1 (Power BI dataflow) ra note 
 
 | Biến môi trường | Bắt buộc | Mặc định |
 |---|---|---|
-| `OBSIDIAN_VAULT_DIR` | ✅ | — |
+| `DATAFLOW_OUTPUT_DIR` | ✅ ở chế độ `repo` | — |
+| `OBSIDIAN_VAULT_DIR` | ✅ ở chế độ `obsidian` | — |
+| `DATAFLOW_FORMAT` | | Theo biến nào đang có; có cả hai thì `obsidian` |
 | `OBSIDIAN_DATAFLOW_FOLDER` | | `20 Areas/Wecare/Power BI Dataflow` |
 | `POWERBI_TENANT_ID` | | `organizations` |
 | `POWERBI_CLIENT_ID` | | Client ID mặc định của `@azure/identity` |
@@ -52,20 +56,22 @@ Custom MCP server export M code của Dataflow Gen1 (Power BI dataflow) ra note 
 ```bash
 npm install
 claude mcp add powerbi-dataflow -s user \
-  -e "OBSIDIAN_VAULT_DIR=D:/Tai Lieu/Obsidian/My Vault" \
-  -- node "D:/Tai Lieu/Wecare/MCP/powerbi-dataflow-mcp/src/index.js"
+  -e "DATAFLOW_OUTPUT_DIR=D:/Tai Lieu/Wecare/TMDL/AR/New/Dataflow" \
+  -- node "<đường dẫn>/powerbi-dataflow-mcp/src/index.js"
 ```
 
 ## Cấu trúc mã nguồn
 
-| File | Dòng | Việc |
-|---|---|---|
-| `src/index.js` | 17 | Điểm vào, khởi động stdio server |
-| `src/server.js` | 170 | Khai báo tool, ráp các bước, trả kết quả |
-| `src/powerbi.js` | 62 | Đăng nhập Microsoft, gọi Power BI REST API |
-| `src/mashup.js` | 100 | Tách M code của từng query từ `document` trong `model.json` |
-| `src/obsidian.js` | 443 | Ghi note dataflow, note query, cập nhật MOC |
-| `test/server.test.js` | — | Test bằng `node --test` |
+| File | Việc |
+|---|---|
+| `src/index.js` | Điểm vào, khởi động stdio server |
+| `src/server.js` | Khai báo tool, chọn chế độ ghi, ráp các bước, trả kết quả |
+| `src/powerbi.js` | Đăng nhập Microsoft, gọi Power BI REST API |
+| `src/mashup.js` | Tách M code của từng query từ `document` trong `model.json` |
+| `src/markdown.js` | Hàm dùng chung cho hai chế độ: escape ô bảng, khối code, đọc file, định dạng ngày |
+| `src/obsidian.js` | Chế độ `obsidian`: note dataflow, note query, cập nhật MOC |
+| `src/repo.js` | Chế độ `repo`: file `.pq` từng query, README dataflow, README gốc |
+| `test/server.test.js` | 12 test bằng `node --test`, phủ cả hai chế độ |
 
 ## Skill đi kèm
 

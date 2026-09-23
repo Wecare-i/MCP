@@ -6,8 +6,13 @@
 
 import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
+import {
+    GENERATED_BY, START, END, toSafeName, cell, codeBlock, countLines, findMarkerLine,
+    readIfExists, formatDate, formatDateTime, formatHuman, formatHumanDate,
+} from "./markdown.js";
 
-export const GENERATED_BY = "powerbi-dataflow-mcp";
+export { GENERATED_BY, START, END } from "./markdown.js";
+export const toNoteName = toSafeName;
 export const DEFAULT_FOLDER = "20 Areas/Wecare/Power BI Dataflow";
 export const MOC_NAME = "Power BI Dataflow — MOC";
 
@@ -16,17 +21,11 @@ const MAX_NOTE_LINES = 400;
 /** Khi phải tách, query dài hơn mức này được ghi thành note riêng */
 const INLINE_QUERY_LINES = 50;
 
-export const START = "<!-- export:start -->";
-export const END = "<!-- export:end -->";
-
 // Key frontmatter do tool ghi. Key khác (ví dụ relations) được giữ lại khi export lại
 const TOOL_KEYS = new Set([
     "type", "tags", "updated", "workspace", "workspace_id", "dataflow", "dataflow_id",
     "dataflow_modified", "query", "exported", "url", "generated_by",
 ]);
-
-// Ký tự không dùng được trong tên file Windows, cộng các ký tự làm hỏng wikilink của Obsidian
-const INVALID_NOTE_CHARS = /[<>:"/\\|?*#^[\]\u0000-\u001f]/g;
 
 /**
  * @typedef {{ name: string, expression: string, loadEnabled: boolean, queryGroup: string | null }} DataflowQuery
@@ -41,12 +40,6 @@ const INVALID_NOTE_CHARS = /[<>:"/\\|?*#^[\]\u0000-\u001f]/g;
  *   exportedAt: Date,
  * }} DataflowExport
  */
-
-/** @param {string} name */
-export function toNoteName(name) {
-    const safe = name.replace(INVALID_NOTE_CHARS, "_").trim().replace(/^\.+|\.+$/g, "");
-    return safe || "_";
-}
 
 /**
  * Ghi note của một dataflow và cập nhật MOC.
@@ -322,18 +315,6 @@ function keepUserParts(text) {
     return { frontmatter, userSection: userSection.trim() ? userSection : "## Ghi chú\n" };
 }
 
-/**
- * Vị trí của dòng chỉ chứa marker. Không tính marker nhắc tới giữa câu, ví dụ trong khối For future agent.
- * @param {string} text
- * @param {string} marker
- */
-function findMarkerLine(text, marker) {
-    const escaped = marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const match = new RegExp(`^${escaped}\\r?$`, "m").exec(text);
-    return match ? match.index : -1;
-}
-
-/** @param {string} text */
 function readFrontmatter(text) {
     const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(text);
     return match ? match[1].split(/\r?\n/) : [];
@@ -374,23 +355,6 @@ function setFrontmatterValue(text, key, value) {
     return frontmatter + text.slice(match[0].length);
 }
 
-/** @param {string} path */
-async function readIfExists(path) {
-    try {
-        return await readFile(path, "utf8");
-    } catch (error) {
-        if (error.code === "ENOENT") return null;
-        throw error;
-    }
-}
-
-/** @param {string} code */
-function codeBlock(code) {
-    let fence = "```";
-    while (code.includes(fence)) fence += "`";
-    return [`${fence}powerquery`, code, fence];
-}
-
 /**
  * @param {string} path Đường dẫn note tương đối so với vault root
  * @param {string} alias
@@ -402,47 +366,8 @@ function wikilink(path, alias, inTable = false) {
     return `[[${target}${inTable ? "\\|" : "|"}${label}]]`;
 }
 
-/**
- * Đưa chữ vào một ô của bảng Markdown.
- * Escape dấu \ trước dấu |, nếu không dấu \ có sẵn trong tên query sẽ nuốt mất dấu \ mình thêm vào.
- * Xuống dòng đổi thành dấu cách, vì một dòng của bảng Markdown phải nằm gọn trên một dòng.
- * @param {string} text
- */
-function cell(text) {
-    return text.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
-}
-
 /** @param {string} value */
 function yaml(value) {
     // Chuỗi JSON cũng là chuỗi YAML hợp lệ trong dấu ngoặc kép
     return JSON.stringify(value);
-}
-
-/** @param {string} text */
-function countLines(text) {
-    return text.split("\n").length;
-}
-
-/** @param {number} n */
-const pad = (n) => String(n).padStart(2, "0");
-
-/** @param {Date} d YYYY-MM-DD theo giờ máy */
-function formatDate(d) {
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-/** @param {Date} d YYYY-MM-DDTHH:mm theo giờ máy */
-function formatDateTime(d) {
-    return `${formatDate(d)}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** @param {Date} d DD/MM/YYYY HH:mm theo giờ máy */
-function formatHuman(d) {
-    return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-/** @param {string | undefined} value Giá trị exported dạng YYYY-MM-DDTHH:mm */
-function formatHumanDate(value) {
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value ?? "");
-    return match ? `${match[3]}/${match[2]}/${match[1]}` : "TBD";
 }
