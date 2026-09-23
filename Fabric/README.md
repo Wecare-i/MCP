@@ -108,6 +108,13 @@ Uses **Azure Service Principal** (OAuth 2.0 Client Credentials) for all API acce
 | `dataflow_run` | ⚠️ Trigger a Dataflow refresh |
 | `dataflow_get_status` | Check Dataflow run status |
 
+### 🧾 Dataflow Gen1 (Power BI)
+
+| Tool | Description |
+|------|-------------|
+| `dataflow_gen1_list` | List all Dataflow Gen1 (Power BI dataflows) in workspace |
+| `dataflow_gen1_get_definition` | Export dataflow definition (model.json) and return the M code of each query |
+
 ### 📓 Notebooks & Spark
 
 | Tool | Description |
@@ -147,7 +154,7 @@ The server uses **3 API clients** internally:
 |--------|-----|--------|
 | `FabricClient` | SQL Endpoint | Lakehouse SQL queries |
 | `FabricRestClient` | `api.fabric.microsoft.com/v1` | Workspace, Dataflow, Notebook, Pipeline, CI/CD |
-| `PowerBIClient` | `api.powerbi.com/v1.0/myorg` | Semantic Models, Reports, Dashboards |
+| `PowerBIClient` | `api.powerbi.com/v1.0/myorg` | Semantic Models, Reports, Dashboards, Dataflow Gen1 |
 
 ---
 

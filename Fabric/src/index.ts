@@ -10,6 +10,7 @@
  * - Semantic Model: Power BI REST API (DAX queries)
  * - Reports & Dashboards: Power BI REST API
  * - Dataflow Gen2: Fabric REST API
+ * - Dataflow Gen1: Power BI REST API (list, export M code)
  * - Notebooks & Spark: Fabric REST API
  *
  * Transport: stdio (local)
@@ -35,6 +36,7 @@ import { registerWorkspaceTools } from "./tools/workspaceTools.js";
 import { registerSemanticTools } from "./tools/semanticTools.js";
 import { registerReportTools } from "./tools/reportTools.js";
 import { registerDataflowTools } from "./tools/dataflowTools.js";
+import { registerDataflowGen1Tools } from "./tools/dataflowGen1Tools.js";
 import { registerNotebookTools } from "./tools/notebookTools.js";
 import { registerPipelineTools } from "./tools/pipelineTools.js";
 import { registerCicdTools } from "./tools/cicdTools.js";
@@ -81,7 +83,7 @@ async function main() {
     // Tạo clients
     const fabricClient = new FabricClient(config);         // SQL (Lakehouse)
     const fabricRestClient = new FabricRestClient(config);  // REST (Workspace, Dataflow, Notebook)
-    const powerbiClient = new PowerBIClient(config);        // REST (Semantic, Reports)
+    const powerbiClient = new PowerBIClient(config);        // REST (Semantic, Reports, Dataflow Gen1)
 
     // Getter functions
     const getSqlClient = () => fabricClient;
@@ -112,6 +114,9 @@ async function main() {
 
     // Dataflow Gen2 tools (REST)
     registerDataflowTools(server, getRestClient);
+
+    // Dataflow Gen1 tools (Power BI REST)
+    registerDataflowGen1Tools(server, getPbiClient);
 
     // Notebooks & Spark tools (REST)
     registerNotebookTools(server, getRestClient);

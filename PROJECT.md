@@ -24,6 +24,7 @@
 | MCP | Local Path | Tools | Active |
 |-----|-----------|:-----:|:------:|
 | **Dataverse** | `dataverse-mcp/build/index.js` | 17 | ✅ |
+| **Power BI Dataflow** | `powerbi-dataflow-mcp/src/index.js` | 1 | ✅ |
 | **Enterprise Admin** | `enterprise-admin-mcp/dist/index.js` | 23 | ⏸️ |
 | **NotebookLM** | `notebooklm/dist/index.js` | 14 | ⏸️ |
 | **BigQuery** | `BigQuery/dist/index.js` | 9 | ⏸️ |
@@ -65,6 +66,9 @@ MCP/
 ├── gg-Cloud-run/             ← Google Cloud Run MCP (cloned repo)
 ├── github/                   ← GitHub MCP setup docs
 ├── notebooklm/               ← NotebookLM MCP setup docs
+├── powerbi-dataflow-mcp/     ← Power BI Dataflow MCP (JavaScript ESM, chạy thẳng src/)
+│   └── src/                  ← index, server, powerbi (REST API), mashup (tách M code), obsidian (ghi note)
+├── powerbi-desktop/          ← Docs: powerbi-modeling-mcp + plugin powerbi-authoring + 2 CLI
 ├── power-automate-mcp/       ← Power Automate MCP (TypeScript, local dist/)
 │   └── src/tools/            ← flow-list, flow-get, flow-trigger, flow-get-runs, flow-get-run-detail, flow-enable, flow-disable
 ├── powerplatform-admin-mcp/  ← PP Admin MCP (TypeScript, local dist/)
